@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 import config from './config/index.js';
 import connectDB from './config/database.js';
 import { initializeSocket } from './socket/index.js';
-import { ConcentrateType } from './models/index.js';
+import { ConcentrateType, Order, User } from './models/index.js';
 import { setServerVersion, setSocketServer } from './socket/bus.js';
 import {
   authRoutes,
@@ -22,7 +22,6 @@ import {
   strainsRoutes,
   pushRoutes,
 } from './routes/index.js';
-import { Order } from './models/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,8 +111,28 @@ mongoose.connection.once('open', async () => {
       );
       console.log('Seeded default concentrate types');
     }
+
+    const existingManagers = await User.countDocuments({ role: 'manager' });
+    if (existingManagers === 0) {
+      const seedManagerEmail = process.env.SEED_MANAGER_EMAIL?.toLowerCase().trim();
+      const seedManagerPassword = process.env.SEED_MANAGER_PASSWORD;
+      const seedManagerNickname = process.env.SEED_MANAGER_NICKNAME || 'Loud Manager';
+
+      if (!seedManagerEmail || !seedManagerPassword) {
+        console.warn('Manager seed skipped: SEED_MANAGER_EMAIL or SEED_MANAGER_PASSWORD not set');
+      } else {
+        const manager = new User({
+          email: seedManagerEmail,
+          password: seedManagerPassword,
+          role: 'manager',
+          nickname: seedManagerNickname,
+        });
+        await manager.save();
+        console.log(`Created default manager: ${seedManagerEmail}`);
+      }
+    }
   } catch (error) {
-    console.warn('Concentrate type seed skipped:', error?.message || error);
+    console.warn('Startup seed skipped:', error?.message || error);
   }
 });
 
