@@ -80,8 +80,13 @@ const Invites = () => {
 
   const getInviteUrl = (code) => {
     // Use path param to match customer portal route: /register/:inviteCode
-    const customerUrl = window.location.origin.replace('manager', 'app');
-    return `${customerUrl}/register/${code}`;
+    const envCustomerUrl = import.meta.env.VITE_CUSTOMER_PORTAL_URL;
+    const origin = window.location.origin;
+    const inferredCustomerUrl = origin.includes('manager')
+      ? origin.replace('manager', 'shop')
+      : origin.replace(':3001', ':3000');
+    const baseUrl = (envCustomerUrl || inferredCustomerUrl).replace(/\/$/, '');
+    return `${baseUrl}/register/${code}`;
   };
 
   const InviteLink = ({ invite }) => {
