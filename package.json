@@ -1,0 +1,29 @@
+{
+  "name": "loud-cannabis-store",
+  "version": "1.0.0",
+  "description": "Cannabis store with customer and manager portals",
+  "private": true,
+  "workspaces": [
+    "server",
+    "customer-portal",
+    "manager-portal"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd server && npm install && cd ../customer-portal && npm install && cd ../manager-portal && npm install",
+    "dev:server": "cd server && npm run dev",
+    "dev:customer": "cd customer-portal && npm run dev",
+    "dev:manager": "cd manager-portal && npm run dev",
+    "dev:frontends": "concurrently \"npm run dev:customer\" \"npm run dev:manager\"",
+    "dev": "concurrently -k -n server,frontends -c green,blue \"npm run dev:server\" \"npx wait-on http://localhost:5000/api/health && npm run dev:frontends\"",
+    "build:customer": "cd customer-portal && npm run build",
+    "build:manager": "cd manager-portal && npm run build",
+    "build:all": "npm run build:customer && npm run build:manager"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "mongodb": "^7.1.0"
+  }
+}
