@@ -2,6 +2,28 @@ import jwt from 'jsonwebtoken';
 import config from '../config/index.js';
 import { User } from '../models/index.js';
 
+const isLocalhostOrigin = (origin) => {
+  if (!origin) return false;
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+};
+
+const shouldBypassAuth = (req) => (
+  process.env.DISABLE_AUTH === 'true' ||
+  (process.env.ALLOW_LOCALHOST_AUTH_BYPASS === 'true' &&
+    isLocalhostOrigin(req.headers.origin))
+);
+
+const getBypassUser = async (req) => {
+  const origin = req.headers.origin || '';
+  const role = origin.includes(':3001') ? 'manager' : 'customer';
+  return User.findOne({ role, isActive: true }).select('-password -refreshTokens -email -emailHash');
+};
+
 // Generate access token
 export const generateAccessToken = (userId, role) => {
   return jwt.sign(
@@ -41,6 +63,15 @@ export const verifyRefreshToken = (token) => {
 // Authentication middleware
 export const authenticate = async (req, res, next) => {
   try {
+    if (shouldBypassAuth(req)) {
+      const user = await getBypassUser(req);
+      if (!user) {
+        return res.status(401).json({ message: 'No active user found for localhost bypass' });
+      }
+      req.user = user;
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -71,6 +102,14 @@ export const authenticate = async (req, res, next) => {
 // Optional authentication middleware (does not block unauthenticated requests)
 export const optionalAuthenticate = async (req, res, next) => {
   try {
+    if (shouldBypassAuth(req)) {
+      const user = await getBypassUser(req);
+      if (user) {
+        req.user = user;
+      }
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return next();

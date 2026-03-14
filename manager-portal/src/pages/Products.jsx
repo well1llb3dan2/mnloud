@@ -33,7 +33,7 @@ const CategoryCard = ({ icon, title, subtitle, count, path, color, imageSrc }) =
       boxShadow="lg"
       h="100%"
       w="100%"
-      maxW={{ base: '100%', sm: '100%' }}
+      maxW={{ base: '100%', md: '360px', xl: '420px' }}
       mx="auto"
     >
       {imageSrc ? (
@@ -151,7 +151,7 @@ const Products = () => {
   return (
     <Box p={4}>
       <VStack spacing={6} align="stretch">
-        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} justifyItems="center">
           <CategoryCard
             icon={GiFlowerPot}
             title="Deli-Style Flower"
