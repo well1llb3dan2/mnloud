@@ -1,46 +1,49 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
-import { useAuthStore } from '../stores';
 import { useToast } from '../components/ToastProvider';
+import { authService } from '../services';
 
-const Login = () => {
-  const [email, setEmail] = useState('');
+const ResetPassword = () => {
+  const { token } = useParams();
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuthStore();
   const navigate = useNavigate();
   const toast = useToast();
 
-  useEffect(() => {
-    const reason = localStorage.getItem('auth:logoutReason');
-    if (reason) {
-      toast({
-        title: 'Signed out',
-        description: reason,
-        status: 'warning',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      });
-      localStorage.removeItem('auth:logoutReason');
-    }
-  }, [toast]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast({
+        title: 'Passwords don\'t match',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      navigate('/', { replace: true });
+      const { message } = await authService.resetPassword(token, password);
+      toast({
+        title: 'Password reset',
+        description: message,
+        status: 'success',
+        duration: 4000,
+        isClosable: true,
+      });
+      navigate('/login', { replace: true });
     } catch (error) {
       toast({
-        title: 'Login failed',
-        description: error.response?.data?.message || error.message || 'Invalid credentials',
+        title: 'Reset failed',
+        description: error.response?.data?.message || 'Invalid or expired reset link',
         status: 'error',
-        duration: 3000,
+        duration: 4000,
         isClosable: true,
       });
     } finally {
@@ -53,28 +56,20 @@ const Login = () => {
       <div className="panel" style={{ width: '100%', maxWidth: 420 }}>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gap: 16 }}>
-            <label>
-              Email
-              <input
-                className="input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                autoComplete="email"
-              />
-            </label>
+            <h3>Choose New Password</h3>
 
             <label>
-              Password
+              New Password
               <div style={{ position: 'relative' }}>
                 <input
                   className="input"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
+                  placeholder="At least 6 characters"
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
                 />
                 <button
                   type="button"
@@ -87,17 +82,30 @@ const Login = () => {
               </div>
             </label>
 
+            <label>
+              Confirm Password
+              <input
+                className="input"
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+                autoComplete="new-password"
+                minLength={6}
+                required
+              />
+            </label>
+
             <button type="submit" className="button" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? 'Resetting...' : 'Reset Password'}
             </button>
 
             <button
               type="button"
               className="button secondary"
-              style={{ fontSize: 14 }}
-              onClick={() => navigate('/forgot-password')}
+              onClick={() => navigate('/login')}
             >
-              Forgot password?
+              Back to Sign In
             </button>
           </div>
         </form>
@@ -106,4 +114,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default ResetPassword;

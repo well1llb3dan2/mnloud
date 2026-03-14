@@ -7,6 +7,8 @@ import { OverlayStackProvider } from './context';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Shop from './pages/Shop';
 import ProductCategory from './pages/ProductCategory';
 import Cart from './pages/Cart';
@@ -51,7 +53,8 @@ function App() {
     const ua = navigator.userAgent || '';
     if (/chrome|chromium|crios/i.test(ua) && !/edg/i.test(ua)) return 'chrome';
     if (/safari/i.test(ua) && !/chrome|crios|chromium|edg|fxios|opr/i.test(ua)) return 'safari';
-    if (/iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'safari';
+    const isIosDevice = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIosDevice && !/crios|fxios|edg|opr/i.test(ua)) return 'safari';
     return 'unsupported';
   }, []);
 
@@ -179,6 +182,22 @@ function App() {
           element={
             <PublicRoute>
               <Register />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <ForgotPassword />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/reset-password/:token"
+          element={
+            <PublicRoute>
+              <ResetPassword />
             </PublicRoute>
           }
         />

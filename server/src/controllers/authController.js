@@ -1,10 +1,12 @@
 import { User, Invite } from '../models/index.js';
 import crypto from 'crypto';
+import config from '../config/index.js';
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
 } from '../middleware/auth.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 
 // Login
 export const login = async (req, res) => {
@@ -373,6 +375,71 @@ export const changePassword = async (req, res) => {
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ message: 'Server error changing password' });
+  }
+};
+
+// Forgot password - send reset email
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const emailLower = String(email || '').toLowerCase().trim();
+    const emailHash = crypto.createHash('sha256').update(emailLower).digest('hex');
+
+    // Always return success to prevent email enumeration
+    const successMsg = 'If an account with that email exists, a reset link has been sent.';
+
+    const user = await User.findOne({ emailHash });
+    if (!user || user.role !== 'customer' || !user.isActive) {
+      return res.json({ message: successMsg });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    user.passwordResetToken = resetTokenHash;
+    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+
+    // Build reset URL
+    const portalUrl = config.cors.customerPortalUrl || 'https://mnloud.com';
+    const resetUrl = `${portalUrl}/reset-password/${resetToken}`;
+
+    await sendPasswordResetEmail(emailLower, resetUrl);
+
+    res.json({ message: successMsg });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error processing request' });
+  }
+};
+
+// Reset password with token
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken: tokenHash,
+      passwordResetExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset link' });
+    }
+
+    user.password = newPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.refreshTokens = [];
+    await user.save();
+
+    res.json({ message: 'Password reset successfully. You can now sign in.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error resetting password' });
   }
 };
 

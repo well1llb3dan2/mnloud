@@ -152,16 +152,47 @@ export const SocketProvider = ({ children }) => {
       localStorage.setItem(serverVersionKey, version);
     });
 
-    newSocket.on('products:status', ({ name, isActive, productType }) => {
+    newSocket.on('products:updated', ({ name, isActive, action, productType }) => {
       const label = name || 'Product';
-      toast({
-        title: isActive ? 'Product available' : 'Product unavailable',
-        description: `${label} ${isActive ? 'is now available' : 'was just deactivated'} (${productType || 'product'}).`,
-        status: isActive ? 'success' : 'warning',
-        duration: 4000,
-        isClosable: true,
-        position: 'top',
-      });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+
+      if (action === 'activated') {
+        toast({
+          title: 'Product available',
+          description: `${label} is now available.`,
+          status: 'success',
+          duration: 4000,
+          isClosable: true,
+          position: 'top',
+        });
+      } else if (action === 'deactivated') {
+        toast({
+          title: 'Product unavailable',
+          description: `${label} was just deactivated.`,
+          status: 'warning',
+          duration: 4000,
+          isClosable: true,
+          position: 'top',
+        });
+      } else if (action === 'deleted') {
+        toast({
+          title: 'Product removed',
+          description: `${label} is no longer available.`,
+          status: 'warning',
+          duration: 4000,
+          isClosable: true,
+          position: 'top',
+        });
+      } else {
+        toast({
+          title: 'Product updated',
+          description: `${label} has been updated.`,
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+          position: 'top',
+        });
+      }
     });
 
     // Message handlers

@@ -57,7 +57,8 @@ function App() {
     const ua = navigator.userAgent || '';
     if (/chrome|chromium|crios/i.test(ua) && !/edg/i.test(ua)) return 'chrome';
     if (/safari/i.test(ua) && !/chrome|crios|chromium|edg|fxios|opr/i.test(ua)) return 'safari';
-    if (/iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'safari';
+    const isIosDevice = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIosDevice && !/crios|fxios|edg|opr/i.test(ua)) return 'safari';
     return 'unsupported';
   }, []);
 

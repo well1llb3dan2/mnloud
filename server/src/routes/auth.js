@@ -15,6 +15,8 @@ import {
   getPublicKey,
   getPrivateKey,
   listPublicKeys,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/authController.js';
 
 const router = express.Router();
@@ -45,6 +47,27 @@ router.post(
 
 // Validate invite code
 router.get('/invite/:code', validateInvite);
+
+// Forgot password
+router.post(
+  '/forgot-password',
+  [
+    body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+  ],
+  handleValidation,
+  forgotPassword
+);
+
+// Reset password with token
+router.post(
+  '/reset-password',
+  [
+    body('token').notEmpty().withMessage('Reset token required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  ],
+  handleValidation,
+  resetPassword
+);
 
 // Refresh token
 router.post('/refresh', refreshToken);

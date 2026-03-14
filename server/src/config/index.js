@@ -40,4 +40,9 @@ export default {
     privateKey: process.env.VAPID_PRIVATE_KEY,
     subject: process.env.VAPID_SUBJECT || 'mailto:support@mnloud.com',
   },
+
+  resend: {
+    apiKey: process.env.RESEND_API_KEY,
+    fromEmail: process.env.RESEND_FROM_EMAIL || 'support@mnloud.com',
+  },
 };

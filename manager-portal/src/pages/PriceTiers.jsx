@@ -44,7 +44,7 @@ const PriceTiers = () => {
   const { register, handleSubmit, reset, control, setValue } = useForm({
     defaultValues: {
       name: '',
-      prices: [{ quantity: 7, price: '' }],
+      prices: [{ quantity: '', price: '' }],
     },
   });
 
@@ -91,7 +91,7 @@ const PriceTiers = () => {
 
   const handleClose = () => {
     setEditingTier(null);
-    reset({ name: '', prices: [{ quantity: 7, price: '' }] });
+    reset({ name: '', prices: [{ quantity: '', price: '' }] });
     onClose();
   };
 
@@ -241,6 +241,7 @@ const PriceTiers = () => {
                         <FormControl>
                           <Input
                             type="number"
+                            step="any"
                             placeholder="Quantity (g)"
                             {...register(`prices.${index}.quantity`, {
                               required: true,

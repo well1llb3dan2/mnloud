@@ -263,12 +263,15 @@ export const updateFlower = async (req, res) => {
     const populated = await flower.populate('priceTier');
     const product = await attachMediaUrls(populated.toObject(), 'manager');
     
-    if (wasActive !== flower.isActive) {
-      emitToRoom('customers', 'products:status', {
+    if (wasActive || flower.isActive) {
+      emitToRoom('customers', 'products:updated', {
         productType: 'flower',
         id: flower._id,
         name: flower.strain || flower.name || 'Flower',
         isActive: flower.isActive,
+        action: wasActive !== flower.isActive
+          ? (flower.isActive ? 'activated' : 'deactivated')
+          : 'updated',
       });
     }
 
@@ -289,9 +292,22 @@ export const deleteFlower = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     
+    const wasActive = flower.isActive;
+    const productName = flower.strain || flower.name || 'Flower';
+
     await deleteMedia(flower.image, { role: 'manager' });
     await deleteMedia(flower.video, { role: 'manager' });
     await flower.deleteOne();
+
+    if (wasActive) {
+      emitToRoom('customers', 'products:updated', {
+        productType: 'flower',
+        id,
+        name: productName,
+        isActive: false,
+        action: 'deleted',
+      });
+    }
     
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
@@ -423,12 +439,15 @@ export const updateConcentrateBase = async (req, res) => {
     
     const strains = await ConcentrateStrain.find({ concentrateBase: id });
     
-    if (wasActive !== base.isActive) {
-      emitToRoom('customers', 'products:status', {
+    if (wasActive || base.isActive) {
+      emitToRoom('customers', 'products:updated', {
         productType: 'concentrate',
         id: base._id,
         name: base.name || 'Concentrate',
         isActive: base.isActive,
+        action: wasActive !== base.isActive
+          ? (base.isActive ? 'activated' : 'deactivated')
+          : 'updated',
       });
     }
 
@@ -450,12 +469,25 @@ export const deleteConcentrateBase = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     
+    const wasActive = base.isActive;
+    const productName = base.name || 'Concentrate';
+
     // Delete all associated strains
     await ConcentrateStrain.deleteMany({ concentrateBase: id });
     
     await deleteMedia(base.image, { role: 'manager' });
     await deleteMedia(base.video, { role: 'manager' });
     await base.deleteOne();
+
+    if (wasActive) {
+      emitToRoom('customers', 'products:updated', {
+        productType: 'concentrate',
+        id,
+        name: productName,
+        isActive: false,
+        action: 'deleted',
+      });
+    }
     
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
@@ -527,12 +559,15 @@ export const updateConcentrateStrain = async (req, res) => {
     Object.assign(strain, data);
     await strain.save();
 
-    if (wasActive !== strain.isActive) {
-      emitToRoom('customers', 'products:status', {
+    if (wasActive || strain.isActive) {
+      emitToRoom('customers', 'products:updated', {
         productType: 'concentrate',
         id: strain._id,
         name: strain.strain || 'Concentrate strain',
         isActive: strain.isActive,
+        action: wasActive !== strain.isActive
+          ? (strain.isActive ? 'activated' : 'deactivated')
+          : 'updated',
       });
     }
 
@@ -551,6 +586,16 @@ export const deleteConcentrateStrain = async (req, res) => {
     
     if (!strain) {
       return res.status(404).json({ message: 'Strain not found' });
+    }
+
+    if (strain.isActive) {
+      emitToRoom('customers', 'products:updated', {
+        productType: 'concentrate',
+        id: strainId,
+        name: strain.strain || 'Concentrate strain',
+        isActive: false,
+        action: 'deleted',
+      });
     }
     
     res.json({ message: 'Strain deleted successfully' });
@@ -734,12 +779,15 @@ export const updateDisposableBase = async (req, res) => {
     
     const strains = await DisposableStrain.find({ disposableBase: id });
     
-    if (wasActive !== base.isActive) {
-      emitToRoom('customers', 'products:status', {
+    if (wasActive || base.isActive) {
+      emitToRoom('customers', 'products:updated', {
         productType: 'disposable',
         id: base._id,
         name: base.name || 'Disposable',
         isActive: base.isActive,
+        action: wasActive !== base.isActive
+          ? (base.isActive ? 'activated' : 'deactivated')
+          : 'updated',
       });
     }
 
@@ -761,11 +809,24 @@ export const deleteDisposableBase = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     
+    const wasActive = base.isActive;
+    const productName = base.name || 'Disposable';
+
     await DisposableStrain.deleteMany({ disposableBase: id });
     
     await deleteMedia(base.image, { role: 'manager' });
     await deleteMedia(base.video, { role: 'manager' });
     await base.deleteOne();
+
+    if (wasActive) {
+      emitToRoom('customers', 'products:updated', {
+        productType: 'disposable',
+        id,
+        name: productName,
+        isActive: false,
+        action: 'deleted',
+      });
+    }
     
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
@@ -837,12 +898,15 @@ export const updateDisposableStrain = async (req, res) => {
     Object.assign(strain, data);
     await strain.save();
 
-    if (wasActive !== strain.isActive) {
-      emitToRoom('customers', 'products:status', {
+    if (wasActive || strain.isActive) {
+      emitToRoom('customers', 'products:updated', {
         productType: 'disposable',
         id: strain._id,
         name: strain.strain || 'Disposable strain',
         isActive: strain.isActive,
+        action: wasActive !== strain.isActive
+          ? (strain.isActive ? 'activated' : 'deactivated')
+          : 'updated',
       });
     }
 
@@ -861,6 +925,16 @@ export const deleteDisposableStrain = async (req, res) => {
     
     if (!strain) {
       return res.status(404).json({ message: 'Strain not found' });
+    }
+
+    if (strain.isActive) {
+      emitToRoom('customers', 'products:updated', {
+        productType: 'disposable',
+        id: strainId,
+        name: strain.strain || 'Disposable strain',
+        isActive: false,
+        action: 'deleted',
+      });
     }
     
     res.json({ message: 'Strain deleted successfully' });
@@ -1065,12 +1139,15 @@ export const updateEdible = async (req, res) => {
     Object.assign(edible, data);
     await edible.save();
 
-    if (wasActive !== edible.isActive) {
-      emitToRoom('customers', 'products:status', {
+    if (wasActive || edible.isActive) {
+      emitToRoom('customers', 'products:updated', {
         productType: 'edible',
         id: edible._id,
         name: edible.name || edible.edibleType || 'Edible',
         isActive: edible.isActive,
+        action: wasActive !== edible.isActive
+          ? (edible.isActive ? 'activated' : 'deactivated')
+          : 'updated',
       });
     }
 
@@ -1184,9 +1261,22 @@ export const deleteEdible = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     
+    const wasActive = edible.isActive;
+    const productName = edible.name || edible.edibleType || 'Edible';
+
     await deleteMedia(edible.image, { role: 'manager' });
     await deleteMedia(edible.video, { role: 'manager' });
     await edible.deleteOne();
+
+    if (wasActive) {
+      emitToRoom('customers', 'products:updated', {
+        productType: 'edible',
+        id,
+        name: productName,
+        isActive: false,
+        action: 'deleted',
+      });
+    }
     
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
