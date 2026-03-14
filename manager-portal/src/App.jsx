@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useToast } from '@chakra-ui/react';
+import { useToast, VStack, Heading, Text, Button, Link } from '@chakra-ui/react';
 import { useAuthStore } from './stores/authStore';
 import { SocketProvider } from './context/SocketContext';
 import { OverlayStackProvider } from './context';
@@ -52,6 +52,46 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   const toast = useToast();
+
+  const browserSupport = useMemo(() => {
+    const ua = navigator.userAgent || '';
+    if (/chrome|chromium|crios/i.test(ua) && !/edg/i.test(ua)) return 'chrome';
+    if (/safari/i.test(ua) && !/chrome|crios|chromium|edg|fxios|opr/i.test(ua)) return 'safari';
+    if (/iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'safari';
+    return 'unsupported';
+  }, []);
+
+  if (browserSupport === 'unsupported') {
+    const currentUrl = window.location.href;
+    return (
+      <VStack spacing={6} maxW="420px" mx="auto" mt="80px" px={8} textAlign="center">
+        <Heading size="lg">Unsupported Browser</Heading>
+        <Text opacity={0.8}>
+          This app works best in Chrome or Safari. Please open it in one of those browsers for the best experience.
+        </Text>
+        <VStack spacing={3} w="full">
+          <Button
+            as={Link}
+            href={`googlechrome://${currentUrl.replace(/^https?:\/\//, '')}`}
+            w="full"
+            colorScheme="purple"
+            _hover={{ textDecoration: 'none' }}
+          >
+            Open in Chrome
+          </Button>
+          <Button
+            w="full"
+            bg="gray.600"
+            color="white"
+            _hover={{ bg: 'gray.500' }}
+            onClick={() => navigator.clipboard?.writeText(currentUrl)}
+          >
+            Copy Link
+          </Button>
+        </VStack>
+      </VStack>
+    );
+  }
 
   useEffect(() => {
     const storageKey = 'manager:lastPortalVersion';

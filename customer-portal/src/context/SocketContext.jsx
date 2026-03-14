@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../components/ToastProvider';
 import { useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
@@ -32,6 +33,7 @@ export const SocketProvider = ({ children }) => {
   const managerKeysRef = useRef(null);
   const { addMessage, setTyping, incrementUnread } = useChatStore();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const serverVersionKey = 'customer:lastServerVersion';
   const hostname = window.location.hostname;
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
@@ -198,6 +200,10 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on('messages:read-receipt', () => {
       // Could update UI to show read receipts
+    });
+
+    newSocket.on('order:status', ({ orderId, status }) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     });
 
     newSocket.on('error', ({ message }) => {

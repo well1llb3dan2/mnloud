@@ -75,6 +75,22 @@ a {
   z-index: 100;
 }
 
+.top-bar-back {
+  position: absolute;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .top-bar-title {
   font-size: 1.1rem;
   font-weight: 700;

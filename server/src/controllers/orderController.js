@@ -1,4 +1,5 @@
 import { Order } from '../models/index.js';
+import { emitToRoom } from '../socket/bus.js';
 
 // Get customer's order history
 export const getCustomerOrders = async (req, res) => {
@@ -111,6 +112,12 @@ export const updateOrderStatus = async (req, res) => {
     await order.save();
     
     const populated = await order.populate('customer', 'firstName lastName nickname');
+
+    // Notify customer in real-time
+    emitToRoom(`user:${order.customer}`, 'order:status', {
+      orderId: order._id,
+      status: order.status,
+    });
     
     res.json({ order: populated });
   } catch (error) {

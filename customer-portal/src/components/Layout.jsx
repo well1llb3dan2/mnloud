@@ -6,6 +6,7 @@ import {
   FiMessageCircle,
   FiClipboard,
   FiUser,
+  FiChevronLeft,
 } from 'react-icons/fi';
 import { useAuthStore, useCartStore, useChatStore } from '../stores';
 import { useBackButton } from '../hooks';
@@ -64,9 +65,12 @@ const categoryTitles = {
   edibles: '🍬 Edibles',
 };
 
+const mainTabs = new Set(['/', '/products', '/cart', '/chat', '/orders', '/profile']);
+
 const Layout = () => {
   // Handle back button behavior for PWA
   useBackButton();
+  const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const cartCount = useCartStore((state) => state.getItemCount());
@@ -84,6 +88,13 @@ const Layout = () => {
     const iPadOs = window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1;
     return iOSDevice || iPadOs;
   }, []);
+
+  const isSafari = useMemo(() => {
+    const ua = window.navigator.userAgent || '';
+    return (/safari/i.test(ua) && !/chrome|crios|chromium|edg|fxios|opr/i.test(ua)) || isIos;
+  }, [isIos]);
+
+  const showBackButton = isSafari && !mainTabs.has(location.pathname);
 
   useEffect(() => {
     const handler = (event) => {
@@ -119,6 +130,16 @@ const Layout = () => {
   return (
     <div className="app-shell">
       <header className="top-bar">
+        {showBackButton && (
+          <button
+            type="button"
+            className="top-bar-back"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+          >
+            <FiChevronLeft size={24} />
+          </button>
+        )}
         <h2 className="top-bar-title">{pageTitle}</h2>
         {showInstallButton && (
           <button type="button" className="button top-bar-install" onClick={handleInstallClick}>

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useToast } from './components/ToastProvider';
 import { useAuthStore } from './stores/authStore';
@@ -46,6 +46,41 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   const toast = useToast();
+
+  const browserSupport = useMemo(() => {
+    const ua = navigator.userAgent || '';
+    if (/chrome|chromium|crios/i.test(ua) && !/edg/i.test(ua)) return 'chrome';
+    if (/safari/i.test(ua) && !/chrome|crios|chromium|edg|fxios|opr/i.test(ua)) return 'safari';
+    if (/iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'safari';
+    return 'unsupported';
+  }, []);
+
+  if (browserSupport === 'unsupported') {
+    const currentUrl = window.location.href;
+    return (
+      <div style={{ padding: 32, textAlign: 'center', maxWidth: 420, margin: '80px auto', fontFamily: 'system-ui, sans-serif' }}>
+        <h2 style={{ marginBottom: 16 }}>Unsupported Browser</h2>
+        <p style={{ marginBottom: 24, opacity: 0.8 }}>
+          This app works best in Chrome or Safari. Please open it in one of those browsers for the best experience.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <a
+            href={`googlechrome://${currentUrl.replace(/^https?:\/\//, '')}`}
+            style={{ padding: '12px 24px', background: '#7c3aed', color: '#fff', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
+          >
+            Open in Chrome
+          </a>
+          <a
+            href={currentUrl}
+            style={{ padding: '12px 24px', background: '#334155', color: '#fff', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
+            onClick={(e) => { e.preventDefault(); navigator.clipboard?.writeText(currentUrl); }}
+          >
+            Copy Link
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const storageKey = 'customer:lastPortalVersion';

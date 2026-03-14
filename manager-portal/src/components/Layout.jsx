@@ -20,7 +20,7 @@ import {
   HStack,
   Text,
 } from '@chakra-ui/react';
-import { FiDownload } from 'react-icons/fi';
+import { FiDownload, FiChevronLeft } from 'react-icons/fi';
 import {
   FiHome,
   FiPackage,
@@ -80,6 +80,8 @@ const BottomNavItem = ({ icon, label, path, badge }) => {
   );
 };
 
+const managerMainTabs = new Set(['/', '/products', '/chats', '/orders']);
+
 const Layout = () => {
   const { colorMode } = useColorMode();
   const navigate = useNavigate();
@@ -104,6 +106,14 @@ const Layout = () => {
     const iPadOs = window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1;
     return iOSDevice || iPadOs;
   }, []);
+
+  const isSafari = useMemo(() => {
+    const ua = window.navigator.userAgent || '';
+    return (/safari/i.test(ua) && !/chrome|crios|chromium|edg|fxios|opr/i.test(ua)) || isIos;
+  }, [isIos]);
+
+  // Show back button on sub-pages (Safari only), but not on ChatDetail (has its own)
+  const showBackButton = isSafari && !managerMainTabs.has(location.pathname) && !isChatDetail;
 
   useEffect(() => {
     const handler = (event) => {
@@ -147,8 +157,31 @@ const Layout = () => {
         flex={1}
         overflow={isChatDetail ? 'hidden' : 'auto'}
         pb={isChatDetail ? 0 : '90px'}
+        pt={showBackButton ? '48px' : 0}
         bg={colorMode === 'dark' ? 'gray.900' : 'gray.50'}
       >
+        {showBackButton && (
+          <HStack
+            position="fixed"
+            top={0}
+            left={0}
+            right={0}
+            h="48px"
+            px={2}
+            bg={colorMode === 'dark' ? 'gray.800' : 'white'}
+            borderBottom="1px"
+            borderColor={colorMode === 'dark' ? 'gray.700' : 'gray.200'}
+            zIndex={110}
+          >
+            <IconButton
+              icon={<FiChevronLeft size={24} />}
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              aria-label="Go back"
+            />
+          </HStack>
+        )}
         {showInstallButton && (
           <HStack
             justify="center"
