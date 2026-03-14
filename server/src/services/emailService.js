@@ -9,7 +9,7 @@ export const sendPasswordResetEmail = async (toEmail, resetUrl) => {
     return;
   }
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: `MN Loud <${config.resend.fromEmail}>`,
     to: toEmail,
     subject: 'Reset Your Password',
@@ -29,4 +29,11 @@ export const sendPasswordResetEmail = async (toEmail, resetUrl) => {
       </div>
     `,
   });
+
+  if (error) {
+    console.error('Resend email error:', error);
+    throw new Error(error.message || 'Failed to send email');
+  }
+
+  console.log('Password reset email sent:', data?.id);
 };
