@@ -1,15 +1,18 @@
 import { 
-  BulkFlower, 
-  PackagedFlower, 
+  Flower, 
   ConcentrateBase, 
   ConcentrateStrain, 
+  DisposableBase,
+  DisposableStrain,
   Edible,
   Strain,
   ConcentrateType,
+  DisposableType,
   EdibleType,
 } from '../models/index.js';
 import { emitToRoom } from '../socket/bus.js';
 import { storeUpload, deleteMedia, getSignedMediaUrl, isR2Active } from '../utils/storage.js';
+import { stripAudio } from '../utils/stripAudio.js';
 // Helper to attach signed media URLs
 const attachMediaUrls = async (product, role = 'customer') => {
   if (!product) return product;
@@ -132,16 +135,16 @@ const upsertStrainRecord = async (data) => {
 };
 
 // =====================
-// BULK FLOWER
+// FLOWER
 // =====================
 
-export const getBulkFlowers = async (req, res) => {
+export const getFlowers = async (req, res) => {
   try {
     const { active } = req.query;
     const filter = active === 'true' ? { isActive: true } : {};
     const sort = { createdAt: -1, _id: -1 };
     
-    const flowers = await BulkFlower.find(filter)
+    const flowers = await Flower.find(filter)
       .populate('priceTier')
       .sort(sort);
     
@@ -152,12 +155,12 @@ export const getBulkFlowers = async (req, res) => {
 
     res.json({ products });
   } catch (error) {
-    console.error('Get bulk flowers error:', error);
-    res.status(500).json({ message: 'Server error fetching bulk flowers' });
+    console.error('Get flowers error:', error);
+    res.status(500).json({ message: 'Server error fetching flowers' });
   }
 };
 
-export const createBulkFlower = async (req, res) => {
+export const createFlower = async (req, res) => {
   try {
     const data = req.body;
 
@@ -174,6 +177,11 @@ export const createBulkFlower = async (req, res) => {
       data.lastActivatedAt = new Date();
     }
 
+    const parsedIsPrePack = parseBooleanField(data.isPrePack);
+    if (parsedIsPrePack !== undefined) {
+      data.isPrePack = parsedIsPrePack;
+    }
+
     normalizeStrainPayload(data);
     if (!data.name && data.strain) {
       data.name = data.strain;
@@ -185,10 +193,11 @@ export const createBulkFlower = async (req, res) => {
       data.image = await storeUpload(imageFile, { role: 'manager' });
     }
     if (videoFile) {
-      data.video = await storeUpload(videoFile, { role: 'manager' });
+      const mutedVideo = await stripAudio(videoFile);
+      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
-    const flower = new BulkFlower(data);
+    const flower = new Flower(data);
     await flower.save();
 
     await upsertStrainRecord(data);
@@ -198,12 +207,12 @@ export const createBulkFlower = async (req, res) => {
     
     res.status(201).json({ product });
   } catch (error) {
-    console.error('Create bulk flower error:', error);
-    res.status(500).json({ message: 'Server error creating bulk flower' });
+    console.error('Create flower error:', error);
+    res.status(500).json({ message: 'Server error creating flower' });
   }
 };
 
-export const updateBulkFlower = async (req, res) => {
+export const updateFlower = async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -213,7 +222,7 @@ export const updateBulkFlower = async (req, res) => {
       data.name = data.strain;
     }
     
-    const flower = await BulkFlower.findById(id);
+    const flower = await Flower.findById(id);
     
     if (!flower) {
       return res.status(404).json({ message: 'Product not found' });
@@ -223,6 +232,11 @@ export const updateBulkFlower = async (req, res) => {
     const parsedIsActive = parseBooleanField(data.isActive);
     if (parsedIsActive !== undefined) {
       data.isActive = parsedIsActive;
+    }
+
+    const parsedIsPrePack = parseBooleanField(data.isPrePack);
+    if (parsedIsPrePack !== undefined) {
+      data.isPrePack = parsedIsPrePack;
     }
 
     if (wasActive === false && data.isActive === true) {
@@ -237,7 +251,8 @@ export const updateBulkFlower = async (req, res) => {
     }
     if (videoFile) {
       await deleteMedia(flower.video, { role: 'manager' });
-      data.video = await storeUpload(videoFile, { role: 'manager' });
+      const mutedVideo = await stripAudio(videoFile);
+      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
     Object.assign(flower, data);
@@ -250,25 +265,25 @@ export const updateBulkFlower = async (req, res) => {
     
     if (wasActive !== flower.isActive) {
       emitToRoom('customers', 'products:status', {
-        productType: 'bulk',
+        productType: 'flower',
         id: flower._id,
-        name: flower.strain || flower.name || 'Bulk flower',
+        name: flower.strain || flower.name || 'Flower',
         isActive: flower.isActive,
       });
     }
 
     res.json({ product });
   } catch (error) {
-    console.error('Update bulk flower error:', error);
-    res.status(500).json({ message: 'Server error updating bulk flower' });
+    console.error('Update flower error:', error);
+    res.status(500).json({ message: 'Server error updating flower' });
   }
 };
 
-export const deleteBulkFlower = async (req, res) => {
+export const deleteFlower = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const flower = await BulkFlower.findById(id);
+    const flower = await Flower.findById(id);
     
     if (!flower) {
       return res.status(404).json({ message: 'Product not found' });
@@ -280,157 +295,8 @@ export const deleteBulkFlower = async (req, res) => {
     
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
-    console.error('Delete bulk flower error:', error);
-    res.status(500).json({ message: 'Server error deleting bulk flower' });
-  }
-};
-
-// =====================
-// PACKAGED FLOWER
-// =====================
-
-export const getPackagedFlowers = async (req, res) => {
-  try {
-    const { active } = req.query;
-    const filter = active === 'true' ? { isActive: true } : {};
-    const sort = { createdAt: -1, _id: -1 };
-    
-    const flowers = await PackagedFlower.find(filter)
-      .sort(sort);
-    
-    const role = req.user?.role || 'customer';
-    const products = await Promise.all(
-      flowers.map((flower) => attachMediaUrls(flower.toObject(), role))
-    );
-
-    res.json({ products });
-  } catch (error) {
-    console.error('Get packaged flowers error:', error);
-    res.status(500).json({ message: 'Server error fetching packaged flowers' });
-  }
-};
-
-export const createPackagedFlower = async (req, res) => {
-  try {
-    const data = req.body;
-
-    const parsedIsActive = parseBooleanField(data.isActive);
-    if (parsedIsActive !== undefined) {
-      data.isActive = parsedIsActive;
-    }
-
-    if (data.isActive === undefined) {
-      data.isActive = false;
-    }
-
-    if (data.isActive === true) {
-      data.lastActivatedAt = new Date();
-    }
-
-    normalizeStrainPayload(data);
-    if (!data.name && data.strain) {
-      data.name = data.strain;
-    }
-    
-    const imageFile = req.files?.image?.[0] || req.file;
-    const videoFile = req.files?.video?.[0];
-    if (imageFile) {
-      data.image = await storeUpload(imageFile, { role: 'manager' });
-    }
-    if (videoFile) {
-      data.video = await storeUpload(videoFile, { role: 'manager' });
-    }
-    
-    const flower = new PackagedFlower(data);
-    await flower.save();
-
-    await upsertStrainRecord(data);
-    
-    const product = await attachMediaUrls(flower.toObject(), 'manager');
-    res.status(201).json({ product });
-  } catch (error) {
-    console.error('Create packaged flower error:', error);
-    res.status(500).json({ message: 'Server error creating packaged flower' });
-  }
-};
-
-export const updatePackagedFlower = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const data = req.body;
-
-    normalizeStrainPayload(data);
-    if (!data.name && data.strain) {
-      data.name = data.strain;
-    }
-    
-    const flower = await PackagedFlower.findById(id);
-    
-    if (!flower) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
-    const wasActive = flower.isActive;
-    const parsedIsActive = parseBooleanField(data.isActive);
-    if (parsedIsActive !== undefined) {
-      data.isActive = parsedIsActive;
-    }
-
-    if (wasActive === false && data.isActive === true) {
-      data.lastActivatedAt = new Date();
-    }
-    
-    const imageFile = req.files?.image?.[0] || req.file;
-    const videoFile = req.files?.video?.[0];
-    if (imageFile) {
-      await deleteMedia(flower.image, { role: 'manager' });
-      data.image = await storeUpload(imageFile, { role: 'manager' });
-    }
-    if (videoFile) {
-      await deleteMedia(flower.video, { role: 'manager' });
-      data.video = await storeUpload(videoFile, { role: 'manager' });
-    }
-    
-    Object.assign(flower, data);
-    await flower.save();
-
-    await upsertStrainRecord({ ...flower.toObject(), ...data });
-    
-    if (wasActive !== flower.isActive) {
-      emitToRoom('customers', 'products:status', {
-        productType: 'packaged',
-        id: flower._id,
-        name: flower.strain || flower.name || flower.brand || 'Packaged flower',
-        isActive: flower.isActive,
-      });
-    }
-
-    const product = await attachMediaUrls(flower.toObject(), 'manager');
-    res.json({ product });
-  } catch (error) {
-    console.error('Update packaged flower error:', error);
-    res.status(500).json({ message: 'Server error updating packaged flower' });
-  }
-};
-
-export const deletePackagedFlower = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const flower = await PackagedFlower.findById(id);
-    
-    if (!flower) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-    
-    await deleteMedia(flower.image, { role: 'manager' });
-    await deleteMedia(flower.video, { role: 'manager' });
-    await flower.deleteOne();
-    
-    res.json({ message: 'Product deleted successfully' });
-  } catch (error) {
-    console.error('Delete packaged flower error:', error);
-    res.status(500).json({ message: 'Server error deleting packaged flower' });
+    console.error('Delete flower error:', error);
+    res.status(500).json({ message: 'Server error deleting flower' });
   }
 };
 
@@ -500,7 +366,8 @@ export const createConcentrateBase = async (req, res) => {
       data.image = await storeUpload(imageFile, { role: 'manager' });
     }
     if (videoFile) {
-      data.video = await storeUpload(videoFile, { role: 'manager' });
+      const mutedVideo = await stripAudio(videoFile);
+      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
     const base = new ConcentrateBase(data);
@@ -547,7 +414,8 @@ export const updateConcentrateBase = async (req, res) => {
     }
     if (videoFile) {
       await deleteMedia(base.video, { role: 'manager' });
-      data.video = await storeUpload(videoFile, { role: 'manager' });
+      const mutedVideo = await stripAudio(videoFile);
+      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
     Object.assign(base, data);
@@ -745,6 +613,316 @@ export const deleteConcentrateType = async (req, res) => {
 };
 
 // =====================
+// DISPOSABLES
+// =====================
+
+export const getDisposableBases = async (req, res) => {
+  try {
+    const { active } = req.query;
+    const filter = active === 'true' ? { isActive: true } : {};
+    const sort = { createdAt: -1, _id: -1 };
+    
+    const bases = await DisposableBase.find(filter)
+      .sort(sort);
+    
+    const role = req.user?.role || 'customer';
+    const basesWithStrains = await Promise.all(
+      bases.map(async (base) => {
+        const strainFilter = active === 'true' 
+          ? { disposableBase: base._id, isActive: true }
+          : { disposableBase: base._id };
+        
+        const strains = await DisposableStrain.find(strainFilter)
+          .sort({ createdAt: -1, _id: -1 });
+        
+        const enriched = await attachMediaUrls(base.toObject(), role);
+        return {
+          ...enriched,
+          strains,
+        };
+      })
+    );
+    
+    res.json({ products: basesWithStrains });
+  } catch (error) {
+    console.error('Get disposable bases error:', error);
+    res.status(500).json({ message: 'Server error fetching disposables' });
+  }
+};
+
+export const createDisposableBase = async (req, res) => {
+  try {
+    const data = req.body;
+
+    const parsedIsActive = parseBooleanField(data.isActive);
+    if (parsedIsActive !== undefined) {
+      data.isActive = parsedIsActive;
+    }
+
+    if (data.isActive === undefined) {
+      data.isActive = false;
+    }
+
+    if (data.isActive === true) {
+      data.lastActivatedAt = new Date();
+    }
+
+    if (!data.name && data.productType) {
+      data.name = data.brand ? `${data.brand} - ${data.productType}` : data.productType;
+    }
+    
+    const imageFile = req.files?.image?.[0] || req.file;
+    const videoFile = req.files?.video?.[0];
+    if (imageFile) {
+      data.image = await storeUpload(imageFile, { role: 'manager' });
+    }
+    if (videoFile) {
+      const mutedVideo = await stripAudio(videoFile);
+      data.video = await storeUpload(mutedVideo, { role: 'manager' });
+    }
+    
+    const base = new DisposableBase(data);
+    await base.save();
+    
+    const enriched = await attachMediaUrls(base.toObject(), 'manager');
+    res.status(201).json({ product: { ...enriched, strains: [] } });
+  } catch (error) {
+    console.error('Create disposable base error:', error);
+    res.status(500).json({ message: 'Server error creating disposable' });
+  }
+};
+
+export const updateDisposableBase = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    if (!data.name && data.productType) {
+      data.name = data.brand ? `${data.brand} - ${data.productType}` : data.productType;
+    }
+    
+    const base = await DisposableBase.findById(id);
+    
+    if (!base) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const wasActive = base.isActive;
+    const parsedIsActive = parseBooleanField(data.isActive);
+    if (parsedIsActive !== undefined) {
+      data.isActive = parsedIsActive;
+    }
+
+    if (wasActive === false && data.isActive === true) {
+      data.lastActivatedAt = new Date();
+    }
+    
+    const imageFile = req.files?.image?.[0] || req.file;
+    const videoFile = req.files?.video?.[0];
+    if (imageFile) {
+      await deleteMedia(base.image, { role: 'manager' });
+      data.image = await storeUpload(imageFile, { role: 'manager' });
+    }
+    if (videoFile) {
+      await deleteMedia(base.video, { role: 'manager' });
+      const mutedVideo = await stripAudio(videoFile);
+      data.video = await storeUpload(mutedVideo, { role: 'manager' });
+    }
+    
+    Object.assign(base, data);
+    await base.save();
+    
+    const strains = await DisposableStrain.find({ disposableBase: id });
+    
+    if (wasActive !== base.isActive) {
+      emitToRoom('customers', 'products:status', {
+        productType: 'disposable',
+        id: base._id,
+        name: base.name || 'Disposable',
+        isActive: base.isActive,
+      });
+    }
+
+    const enriched = await attachMediaUrls(base.toObject(), 'manager');
+    res.json({ product: { ...enriched, strains } });
+  } catch (error) {
+    console.error('Update disposable base error:', error);
+    res.status(500).json({ message: 'Server error updating disposable' });
+  }
+};
+
+export const deleteDisposableBase = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const base = await DisposableBase.findById(id);
+    
+    if (!base) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    
+    await DisposableStrain.deleteMany({ disposableBase: id });
+    
+    await deleteMedia(base.image, { role: 'manager' });
+    await deleteMedia(base.video, { role: 'manager' });
+    await base.deleteOne();
+    
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Delete disposable base error:', error);
+    res.status(500).json({ message: 'Server error deleting disposable' });
+  }
+};
+
+// Disposable Strains
+export const addDisposableStrain = async (req, res) => {
+  try {
+    const { baseId } = req.params;
+    const data = req.body;
+
+    const parsedIsActive = parseBooleanField(data.isActive);
+    if (parsedIsActive !== undefined) {
+      data.isActive = parsedIsActive;
+    }
+
+    if (data.isActive === undefined) {
+      data.isActive = false;
+    }
+
+    if (data.isActive === true) {
+      data.lastActivatedAt = new Date();
+    }
+    
+    const base = await DisposableBase.findById(baseId);
+    
+    if (!base) {
+      return res.status(404).json({ message: 'Disposable base not found' });
+    }
+    
+    const strain = new DisposableStrain({
+      ...data,
+      disposableBase: baseId,
+    });
+    
+    await strain.save();
+    
+    res.status(201).json({ strain });
+  } catch (error) {
+    console.error('Add disposable strain error:', error);
+    res.status(500).json({ message: 'Server error adding strain' });
+  }
+};
+
+export const updateDisposableStrain = async (req, res) => {
+  try {
+    const { strainId } = req.params;
+    const data = req.body;
+    
+    const strain = await DisposableStrain.findById(strainId);
+    
+    if (!strain) {
+      return res.status(404).json({ message: 'Strain not found' });
+    }
+
+    const wasActive = strain.isActive;
+    const parsedIsActive = parseBooleanField(data.isActive);
+    if (parsedIsActive !== undefined) {
+      data.isActive = parsedIsActive;
+    }
+
+    if (wasActive === false && data.isActive === true) {
+      data.lastActivatedAt = new Date();
+    }
+    
+    Object.assign(strain, data);
+    await strain.save();
+
+    if (wasActive !== strain.isActive) {
+      emitToRoom('customers', 'products:status', {
+        productType: 'disposable',
+        id: strain._id,
+        name: strain.strain || 'Disposable strain',
+        isActive: strain.isActive,
+      });
+    }
+
+    res.json({ strain });
+  } catch (error) {
+    console.error('Update disposable strain error:', error);
+    res.status(500).json({ message: 'Server error updating strain' });
+  }
+};
+
+export const deleteDisposableStrain = async (req, res) => {
+  try {
+    const { strainId } = req.params;
+    
+    const strain = await DisposableStrain.findByIdAndDelete(strainId);
+    
+    if (!strain) {
+      return res.status(404).json({ message: 'Strain not found' });
+    }
+    
+    res.json({ message: 'Strain deleted successfully' });
+  } catch (error) {
+    console.error('Delete disposable strain error:', error);
+    res.status(500).json({ message: 'Server error deleting strain' });
+  }
+};
+
+// =====================
+// DISPOSABLE TYPES
+// =====================
+
+export const getDisposableTypes = async (req, res) => {
+  try {
+    const types = await DisposableType.find().sort({ name: 1 });
+    res.json({ types });
+  } catch (error) {
+    console.error('Get disposable types error:', error);
+    res.status(500).json({ message: 'Server error fetching disposable types' });
+  }
+};
+
+export const createDisposableType = async (req, res) => {
+  try {
+    const { name } = req.body;
+    const trimmed = String(name || '').trim();
+    if (!trimmed) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+
+    const nameLower = trimmed.toLowerCase();
+    const existing = await DisposableType.findOne({ nameLower });
+    if (existing) {
+      return res.status(200).json({ type: existing });
+    }
+
+    const type = await DisposableType.create({ name: trimmed, nameLower });
+    res.status(201).json({ type });
+  } catch (error) {
+    console.error('Create disposable type error:', error);
+    res.status(500).json({ message: 'Server error creating disposable type' });
+  }
+};
+
+export const deleteDisposableType = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const type = await DisposableType.findById(id);
+    if (!type) {
+      return res.status(404).json({ message: 'Type not found' });
+    }
+
+    await type.deleteOne();
+    res.json({ message: 'Type deleted' });
+  } catch (error) {
+    console.error('Delete disposable type error:', error);
+    res.status(500).json({ message: 'Server error deleting disposable type' });
+  }
+};
+
+// =====================
 // EDIBLE TYPES
 // =====================
 
@@ -877,7 +1055,8 @@ export const createEdible = async (req, res) => {
       data.image = await storeUpload(imageFile, { role: 'manager' });
     }
     if (videoFile) {
-      data.video = await storeUpload(videoFile, { role: 'manager' });
+      const mutedVideo = await stripAudio(videoFile);
+      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
     const edible = new Edible(data);
@@ -924,7 +1103,8 @@ export const updateEdible = async (req, res) => {
     }
     if (videoFile) {
       await deleteMedia(edible.video, { role: 'manager' });
-      data.video = await storeUpload(videoFile, { role: 'manager' });
+      const mutedVideo = await stripAudio(videoFile);
+      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
     Object.assign(edible, data);
@@ -1066,10 +1246,10 @@ export const deleteEdible = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const [bulkFlowers, packagedFlowers, concentrateBases, edibles] = await Promise.all([
-      BulkFlower.find({ isActive: true }).populate('priceTier').sort({ createdAt: -1, _id: -1 }),
-      PackagedFlower.find({ isActive: true }).sort({ createdAt: -1, _id: -1 }),
+    const [flowers, concentrateBases, disposableBases, edibles] = await Promise.all([
+      Flower.find({ isActive: true }).populate('priceTier').sort({ createdAt: -1, _id: -1 }),
       ConcentrateBase.find({ isActive: true }).sort({ createdAt: -1, _id: -1 }),
+      DisposableBase.find({ isActive: true }).sort({ createdAt: -1, _id: -1 }),
       Edible.find({ isActive: true }).sort({ createdAt: -1, _id: -1 }),
     ]);
     
@@ -1089,20 +1269,33 @@ export const getAllProducts = async (req, res) => {
       })
     );
 
-    const bulkWithMedia = await Promise.all(
-      bulkFlowers.map((flower) => attachMediaUrls(flower.toObject(), 'customer'))
+    // Get strains for disposables
+    const disposablesWithStrains = await Promise.all(
+      disposableBases.map(async (base) => {
+        const strains = await DisposableStrain.find({
+          disposableBase: base._id,
+          isActive: true,
+        }).sort({ createdAt: -1, _id: -1 });
+        
+        const enriched = await attachMediaUrls(base.toObject(), 'customer');
+        return {
+          ...enriched,
+          strains,
+        };
+      })
     );
-    const packagedWithMedia = await Promise.all(
-      packagedFlowers.map((flower) => attachMediaUrls(flower.toObject(), 'customer'))
+
+    const flowersWithMedia = await Promise.all(
+      flowers.map((flower) => attachMediaUrls(flower.toObject(), 'customer'))
     );
     const ediblesWithMedia = await Promise.all(
       edibles.map((edible) => attachMediaUrls(edible.toObject(), 'customer'))
     );
     
     res.json({
-      bulkFlowers: bulkWithMedia,
-      packagedFlowers: packagedWithMedia,
+      flowers: flowersWithMedia,
       concentrates: concentratesWithStrains,
+      disposables: disposablesWithStrains,
       edibles: ediblesWithMedia,
     });
   } catch (error) {
@@ -1118,14 +1311,14 @@ export const deleteProductImage = async (req, res) => {
     
     let Model;
     switch (type) {
-      case 'bulk':
-        Model = BulkFlower;
-        break;
-      case 'packaged':
-        Model = PackagedFlower;
+      case 'flower':
+        Model = Flower;
         break;
       case 'concentrate':
         Model = ConcentrateBase;
+        break;
+      case 'disposable':
+        Model = DisposableBase;
         break;
       case 'edible':
         Model = Edible;

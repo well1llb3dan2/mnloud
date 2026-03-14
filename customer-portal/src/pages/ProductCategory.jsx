@@ -30,37 +30,39 @@ const ProductCategory = () => {
     );
   }
 
-  const { bulkFlowers = [], packagedFlowers = [], concentrates = [], edibles = [] } = data || {};
+  const { flowers = [], disposables = [], concentrates = [], edibles = [] } = data || {};
 
   let products = [];
-  let headerImage = '';
 
   switch (category) {
     case 'flower':
-      products = bulkFlowers.map((p) => ({ ...p, _type: 'bulk' }));
-      headerImage = '/images/delistyleflower-button.png';
+      products = flowers.map((p) => ({ ...p, _type: 'flower' }));
       break;
-    case 'packaged':
-      products = packagedFlowers.map((p) => ({ ...p, _type: 'packaged' }));
-      headerImage = '/images/prepackflower-button.png';
+    case 'disposables':
+      products = disposables.map((p) => ({ ...p, _type: 'disposable' }));
       break;
     case 'concentrates':
       products = concentrates.map((p) => ({ ...p, _type: 'concentrate' }));
-      headerImage = '/images/concentrate-button.png';
       break;
     case 'edibles':
       products = edibles.map((p) => ({ ...p, _type: 'edible' }));
-      headerImage = '/images/edible-button.png';
       break;
     default:
-      headerImage = '';
+      break;
   }
+
+  const categoryTitles = {
+    flower: '🌿 Flower',
+    disposables: '💨 Disposables',
+    concentrates: '🧪 Concentrates',
+    edibles: '🍬 Edibles',
+  };
 
   return (
     <section className="page">
-      {headerImage ? (
-        <img className="category-image" src={headerImage} alt="" />
-      ) : null}
+      <h2 style={{ textAlign: 'center', marginBottom: 16 }}>
+        {categoryTitles[category] || category}
+      </h2>
 
       {products.length === 0 ? (
         <div className="panel" style={{ marginTop: 16, textAlign: 'center' }}>
@@ -73,13 +75,6 @@ const ProductCategory = () => {
               key={product._id}
               product={product}
               type={product._type}
-              categoryLabel={
-                product._type === 'bulk'
-                  ? 'Deli-pack flower'
-                  : product._type === 'packaged'
-                    ? 'Pre-pack flower'
-                    : undefined
-              }
             />
           ))}
         </div>

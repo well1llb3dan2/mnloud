@@ -154,8 +154,8 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
       `${product.brand || ''}${product.productType ? ` - ${product.productType}` : ''}${product.edibleType ? ` - ${product.edibleType}` : ''}`.trim();
 
     const summaryParts = [displayName || 'Item'];
-    if (type === 'bulk' && weight) summaryParts.push(weight);
-    if (type === 'concentrate' && strain?.strain) summaryParts.push(strain.strain);
+    if (type === 'flower' && weight) summaryParts.push(weight);
+    if ((type === 'concentrate' || type === 'disposable') && strain?.strain) summaryParts.push(strain.strain);
     if (quantity > 1) summaryParts.push(`Qty ${quantity}`);
 
     const confirmed = await confirm({
@@ -175,11 +175,11 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
       quantity: quantity || 1,
     };
 
-    if (type === 'bulk') {
+    if (type === 'flower') {
       itemData.weight = weight;
       itemData.strain = product.strain;
       itemData.priceEach = parseFloat(price) || 0;
-    } else if (type === 'concentrate' && strain) {
+    } else if ((type === 'concentrate' || type === 'disposable') && strain) {
       itemData.strain = strain.strain;
       itemData.strainType = strain.strainType;
     } else if (type === 'edible' && strain) {
@@ -253,7 +253,7 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
         {product.weight ? <div>Weight: {product.weight}</div> : null}
         {product.price ? <div>${product.price}</div> : null}
 
-        {type === 'bulk' && (
+        {type === 'flower' && (
           <select
             className="select"
             value={activeTier?.quantity ?? ''}
@@ -271,7 +271,7 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
           </select>
         )}
 
-        {type === 'concentrate' && activeStrains.length > 0 && (
+        {(type === 'concentrate' || type === 'disposable') && activeStrains.length > 0 && (
           <select
             className="select"
             value={selectedStrain?._id || ''}
@@ -299,7 +299,7 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
           </select>
         )}
 
-        {type !== 'bulk' && (
+        {type !== 'flower' && (
           <select
             className="select"
             value={selectedQuantity}
@@ -317,13 +317,13 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
           type="button"
           className="button"
           onClick={() => {
-            if (type === 'bulk') {
+            if (type === 'flower') {
               if (!activeTier) return;
               handleAddToCart(`${activeTier.quantity}g`, activeTier.price, null, 1);
               return;
             }
 
-            if (type === 'concentrate') {
+            if (type === 'concentrate' || type === 'disposable') {
               handleAddToCart(null, product.price, selectedStrain, selectedQuantity);
               return;
             }
@@ -373,7 +373,7 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
             />
           )}
           {product.description ? <p>{product.description}</p> : null}
-          {type === 'concentrate' && activeStrains.length > 0 ? (
+          {(type === 'concentrate' || type === 'disposable') && activeStrains.length > 0 ? (
             <div>
               <strong>Flavors:</strong>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>

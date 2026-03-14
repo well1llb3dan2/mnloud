@@ -71,13 +71,13 @@ export const productService = {
     return response.data;
   },
 
-  getBulkFlowers: async () => {
-    const response = await api.get('/products/bulk?active=true');
+  getFlowers: async () => {
+    const response = await api.get('/products/flower?active=true');
     return response.data;
   },
 
-  getPackagedFlowers: async () => {
-    const response = await api.get('/products/packaged?active=true');
+  getDisposables: async () => {
+    const response = await api.get('/products/disposables?active=true');
     return response.data;
   },
 

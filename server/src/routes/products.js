@@ -1,16 +1,11 @@
 import express from 'express';
 import { authenticate, managerOnly, optionalAuthenticate, upload, handleUploadError } from '../middleware/index.js';
 import {
-  // Bulk Flower
-  getBulkFlowers,
-  createBulkFlower,
-  updateBulkFlower,
-  deleteBulkFlower,
-  // Packaged Flower
-  getPackagedFlowers,
-  createPackagedFlower,
-  updatePackagedFlower,
-  deletePackagedFlower,
+  // Flower
+  getFlowers,
+  createFlower,
+  updateFlower,
+  deleteFlower,
   // Concentrates
   getConcentrateBases,
   createConcentrateBase,
@@ -22,10 +17,21 @@ import {
   getConcentrateTypes,
   createConcentrateType,
   deleteConcentrateType,
+  // Disposables
+  getDisposableBases,
+  createDisposableBase,
+  updateDisposableBase,
+  deleteDisposableBase,
+  addDisposableStrain,
+  updateDisposableStrain,
+  deleteDisposableStrain,
+  getDisposableTypes,
+  createDisposableType,
+  deleteDisposableType,
+  // Edibles
   getEdibleTypes,
   createEdibleType,
   deleteEdibleType,
-  // Edibles
   getEdibles,
   createEdible,
   updateEdible,
@@ -48,9 +54,9 @@ const router = express.Router();
 router.get('/', optionalAuthenticate, getAllProducts);
 
 // Get products by category
-router.get('/bulk', optionalAuthenticate, getBulkFlowers);
-router.get('/packaged', optionalAuthenticate, getPackagedFlowers);
+router.get('/flower', optionalAuthenticate, getFlowers);
 router.get('/concentrates', optionalAuthenticate, getConcentrateBases);
+router.get('/disposables', optionalAuthenticate, getDisposableBases);
 router.get('/edibles', optionalAuthenticate, getEdibles);
 
 // =====================
@@ -64,20 +70,20 @@ router.get('/concentrate-types', getConcentrateTypes);
 router.post('/concentrate-types', createConcentrateType);
 router.delete('/concentrate-types/:id', deleteConcentrateType);
 
+// Disposable Types
+router.get('/disposable-types', getDisposableTypes);
+router.post('/disposable-types', createDisposableType);
+router.delete('/disposable-types/:id', deleteDisposableType);
+
 // Edible Types
 router.get('/edible-types', getEdibleTypes);
 router.post('/edible-types', createEdibleType);
 router.delete('/edible-types/:id', deleteEdibleType);
 
-// Bulk Flower
-router.post('/bulk', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, createBulkFlower);
-router.patch('/bulk/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, updateBulkFlower);
-router.delete('/bulk/:id', deleteBulkFlower);
-
-// Packaged Flower
-router.post('/packaged', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, createPackagedFlower);
-router.patch('/packaged/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, updatePackagedFlower);
-router.delete('/packaged/:id', deletePackagedFlower);
+// Flower
+router.post('/flower', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, createFlower);
+router.patch('/flower/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, updateFlower);
+router.delete('/flower/:id', deleteFlower);
 
 // Concentrates
 router.post('/concentrates', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, createConcentrateBase);
@@ -88,6 +94,16 @@ router.delete('/concentrates/:id', deleteConcentrateBase);
 router.post('/concentrates/:baseId/strains', addConcentrateStrain);
 router.patch('/concentrates/strains/:strainId', updateConcentrateStrain);
 router.delete('/concentrates/strains/:strainId', deleteConcentrateStrain);
+
+// Disposables
+router.post('/disposables', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, createDisposableBase);
+router.patch('/disposables/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, updateDisposableBase);
+router.delete('/disposables/:id', deleteDisposableBase);
+
+// Disposable Strains
+router.post('/disposables/:baseId/strains', addDisposableStrain);
+router.patch('/disposables/strains/:strainId', updateDisposableStrain);
+router.delete('/disposables/strains/:strainId', deleteDisposableStrain);
 
 // Edibles
 router.post('/edibles', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, createEdible);

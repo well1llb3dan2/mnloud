@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { User, PriceTier, BulkFlower, PackagedFlower, Edible } from '../models/index.js';
+import { User, PriceTier, Flower, Edible } from '../models/index.js';
 
 dotenv.config();
 

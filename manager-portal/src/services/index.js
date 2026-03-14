@@ -110,53 +110,28 @@ export const priceTierService = {
 };
 
 export const productService = {
-  // Bulk flowers
-  getBulkFlowers: async () => {
-    const response = await api.get('/products/bulk');
+  // Flowers
+  getFlowers: async () => {
+    const response = await api.get('/products/flower');
     return response.data;
   },
 
-  createBulkFlower: async (formData) => {
-    const response = await api.post('/products/bulk', formData, {
+  createFlower: async (formData) => {
+    const response = await api.post('/products/flower', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
 
-  updateBulkFlower: async (id, formData) => {
-    const response = await api.patch(`/products/bulk/${id}`, formData, {
+  updateFlower: async (id, formData) => {
+    const response = await api.patch(`/products/flower/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
 
-  deleteBulkFlower: async (id) => {
-    const response = await api.delete(`/products/bulk/${id}`);
-    return response.data;
-  },
-
-  // Packaged flowers
-  getPackagedFlowers: async () => {
-    const response = await api.get('/products/packaged');
-    return response.data;
-  },
-
-  createPackagedFlower: async (formData) => {
-    const response = await api.post('/products/packaged', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  },
-
-  updatePackagedFlower: async (id, formData) => {
-    const response = await api.patch(`/products/packaged/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  },
-
-  deletePackagedFlower: async (id) => {
-    const response = await api.delete(`/products/packaged/${id}`);
+  deleteFlower: async (id) => {
+    const response = await api.delete(`/products/flower/${id}`);
     return response.data;
   },
 
@@ -212,6 +187,61 @@ export const productService = {
 
   deleteConcentrateStrain: async (strainId) => {
     const response = await api.delete(`/products/concentrates/strains/${strainId}`);
+    return response.data;
+  },
+
+  // Disposables
+  getDisposables: async () => {
+    const response = await api.get('/products/disposables');
+    return response.data;
+  },
+
+  getDisposableTypes: async () => {
+    const response = await api.get('/products/disposable-types');
+    return response.data;
+  },
+
+  createDisposableType: async (name) => {
+    const response = await api.post('/products/disposable-types', { name });
+    return response.data;
+  },
+
+  deleteDisposableType: async (id) => {
+    const response = await api.delete(`/products/disposable-types/${id}`);
+    return response.data;
+  },
+
+  createDisposableBase: async (formData) => {
+    const response = await api.post('/products/disposables', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  updateDisposableBase: async (id, formData) => {
+    const response = await api.patch(`/products/disposables/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteDisposableBase: async (id) => {
+    const response = await api.delete(`/products/disposables/${id}`);
+    return response.data;
+  },
+
+  addDisposableStrain: async (baseId, data) => {
+    const response = await api.post(`/products/disposables/${baseId}/strains`, data);
+    return response.data;
+  },
+
+  updateDisposableStrain: async (strainId, data) => {
+    const response = await api.patch(`/products/disposables/strains/${strainId}`, data);
+    return response.data;
+  },
+
+  deleteDisposableStrain: async (strainId) => {
+    const response = await api.delete(`/products/disposables/strains/${strainId}`);
     return response.data;
   },
 

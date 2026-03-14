@@ -105,9 +105,9 @@ const Dashboard = () => {
   const { data: productData, isLoading: isLoadingProducts } = useQuery({
     queryKey: ['productCounts'],
     queryFn: async () => {
-      const [bulk, packaged, concentrates, edibles] = await Promise.all([
-        productService.getBulkFlowers(),
-        productService.getPackagedFlowers(),
+      const [flowers, disposables, concentrates, edibles] = await Promise.all([
+        productService.getFlowers(),
+        productService.getDisposables(),
         productService.getConcentrates(),
         productService.getEdibles(),
       ]);
@@ -116,8 +116,8 @@ const Dashboard = () => {
         items.filter((item) => item.isActive !== false).length;
 
       return (
-        countActive(bulk?.products) +
-        countActive(packaged?.products) +
+        countActive(flowers?.products) +
+        countActive(disposables?.products) +
         countActive(concentrates?.products) +
         countActive(edibles?.products)
       );

@@ -8,8 +8,8 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
-import BulkFlowers from './pages/products/BulkFlowers';
-import PackagedFlowers from './pages/products/PackagedFlowers';
+import Flowers from './pages/products/Flowers';
+import Disposables from './pages/products/Disposables';
 import Concentrates from './pages/products/Concentrates';
 import Edibles from './pages/products/Edibles';
 import PriceTiers from './pages/PriceTiers';
@@ -157,8 +157,8 @@ function App() {
         >
           <Route index element={<Dashboard />} />
           <Route path="products" element={<Products />} />
-          <Route path="products/bulk" element={<BulkFlowers />} />
-          <Route path="products/packaged" element={<PackagedFlowers />} />
+          <Route path="products/flower" element={<Flowers />} />
+          <Route path="products/disposables" element={<Disposables />} />
           <Route path="products/concentrates" element={<Concentrates />} />
           <Route path="products/edibles" element={<Edibles />} />
           <Route path="price-tiers" element={<PriceTiers />} />

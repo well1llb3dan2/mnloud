@@ -45,7 +45,7 @@ const resolveMediaUrl = (mediaUrl, mediaPath) => (
   mediaUrl || (mediaPath ? `/uploads/${mediaPath.replace('uploads/', '')}` : null)
 );
 
-const BulkFlowers = () => {
+const Flowers = () => {
   const navigate = useNavigate();
   const { colorMode } = useColorMode();
   const toast = useToast();
@@ -113,8 +113,8 @@ const BulkFlowers = () => {
 
   // Fetch products
   const { data, isLoading } = useQuery({
-    queryKey: ['bulkFlowers'],
-    queryFn: productService.getBulkFlowers,
+    queryKey: ['flowers'],
+    queryFn: productService.getFlowers,
   });
 
   // Fetch price tiers
@@ -128,12 +128,12 @@ const BulkFlowers = () => {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: productService.createBulkFlower,
+    mutationFn: productService.createFlower,
     onSuccess: () => {
-      queryClient.invalidateQueries(['bulkFlowers']);
+      queryClient.invalidateQueries(['flowers']);
       toast({ title: 'Product created', status: 'success' });
       handleClose();
-      navigate('/products/bulk', { replace: true });
+      navigate('/products/flower', { replace: true });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, status: 'error' });
@@ -141,9 +141,9 @@ const BulkFlowers = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => productService.updateBulkFlower(id, data),
+    mutationFn: ({ id, data }) => productService.updateFlower(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['bulkFlowers']);
+      queryClient.invalidateQueries(['flowers']);
       toast({ title: 'Product updated', status: 'success' });
       handleClose();
     },
@@ -153,9 +153,9 @@ const BulkFlowers = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: productService.deleteBulkFlower,
+    mutationFn: productService.deleteFlower,
     onSuccess: () => {
-      queryClient.invalidateQueries(['bulkFlowers']);
+      queryClient.invalidateQueries(['flowers']);
       toast({ title: 'Product deleted', status: 'success' });
     },
   });
@@ -174,10 +174,10 @@ const BulkFlowers = () => {
     mutationFn: ({ id, isActive }) => {
       const formData = new FormData();
       formData.append('isActive', isActive);
-      return productService.updateBulkFlower(id, formData);
+      return productService.updateFlower(id, formData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['bulkFlowers']);
+      queryClient.invalidateQueries(['flowers']);
     },
   });
 
@@ -226,6 +226,7 @@ const BulkFlowers = () => {
     setValue('terpenes', Array.isArray(product.terpenes) ? product.terpenes.join(', ') : '');
     setValue('lineage', product.lineage || '');
     setValue('priceTier', product.priceTier?._id || product.priceTier);
+    setValue('isPrePack', product.isPrePack || false);
     setValue('description', product.description);
     if (product.image) {
       setImagePreview(resolveMediaUrl(product.imageUrl, product.image));
@@ -347,6 +348,7 @@ const BulkFlowers = () => {
       }
       const formData = new FormData();
       formData.append('priceTier', data.priceTier);
+      formData.append('isPrePack', data.isPrePack ? 'true' : 'false');
       const compressedFile = compressedImageRef.current;
       const cameraFile = cameraInputRef.current?.files?.[0];
       const galleryFile = fileInputRef.current?.files?.[0];
@@ -548,6 +550,7 @@ const BulkFlowers = () => {
     setValue('lineage', '');
     setValue('description', '');
     setValue('priceTier', '');
+    setValue('isPrePack', false);
   };
 
   const handleBatchClose = () => {
@@ -714,15 +717,15 @@ const BulkFlowers = () => {
           if (item.description) {
             formData.append('description', item.description);
           }
-          return productService.createBulkFlower(formData);
+          return productService.createFlower(formData);
         })
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['bulkFlowers']);
+      queryClient.invalidateQueries(['flowers']);
       toast({ title: 'Batch created', status: 'success' });
       handleBatchClose();
-      navigate('/products/bulk', { replace: true });
+      navigate('/products/flower', { replace: true });
     },
     onError: (error) => {
       toast({ title: 'Batch create failed', description: error.message, status: 'error' });
@@ -1020,6 +1023,7 @@ const BulkFlowers = () => {
       lineage: override?.lineage || watch('lineage') || '',
       description: override?.description || watch('description') || '',
       priceTier: watch('priceTier') || '',
+      isPrePack: watch('isPrePack') || false,
     };
 
     const missing = requiredFields.filter((field) => !formValues[field]);
@@ -1040,7 +1044,7 @@ const BulkFlowers = () => {
     setAddStep(3);
   };
 
-  const buildBulkFormData = (item) => {
+  const buildFlowerFormData = (item) => {
     const formData = new FormData();
     formData.append('strain', item.strain);
     if (item.thc_percent !== '') formData.append('thc_percent', item.thc_percent);
@@ -1052,6 +1056,7 @@ const BulkFlowers = () => {
     if (item.lineage) formData.append('lineage', item.lineage);
     if (item.description) formData.append('description', item.description);
     if (item.priceTier) formData.append('priceTier', item.priceTier);
+    formData.append('isPrePack', item.isPrePack ? 'true' : 'false');
     return formData;
   };
 
@@ -1066,7 +1071,7 @@ const BulkFlowers = () => {
     }
 
     if (pendingStrains.length === 1 && !editingProduct) {
-      const formData = buildBulkFormData(pendingStrains[0]);
+      const formData = buildFlowerFormData(pendingStrains[0]);
       const compressedFile = compressedImageRef.current;
       const cameraFile = cameraInputRef.current?.files?.[0];
       const galleryFile = fileInputRef.current?.files?.[0];
@@ -1121,7 +1126,7 @@ const BulkFlowers = () => {
       <VStack spacing={4} align="stretch">
         <HStack justify="space-between">
           <Text fontSize="2xl" fontWeight="bold">
-            Deli-Style Flower
+            Flower
           </Text>
           <HStack>
             <Button
@@ -1148,7 +1153,7 @@ const BulkFlowers = () => {
         </HStack>
         {products.length === 0 ? (
           <Center h="200px">
-            <Text color="gray.500">No deli-style flower products</Text>
+            <Text color="gray.500">No flower products</Text>
           </Center>
         ) : (
           <Accordion allowToggle>
@@ -1161,6 +1166,11 @@ const BulkFlowers = () => {
                       <Badge colorScheme={product.isActive ? 'green' : 'red'}>
                         {product.isActive ? 'Active' : 'Inactive'}
                       </Badge>
+                      {product.isPrePack && (
+                        <Badge colorScheme="blue" variant="subtle">
+                          Pre-Pack
+                        </Badge>
+                      )}
                     </HStack>
                   </Box>
                   <Box
@@ -1231,7 +1241,7 @@ const BulkFlowers = () => {
         <ModalOverlay />
         <ModalContent bg={colorMode === 'dark' ? 'gray.800' : 'white'}>
           <ModalHeader>
-            {editingProduct ? 'Edit' : 'Add'} Deli-Style Flower
+            {editingProduct ? 'Edit' : 'Add'} Flower
           </ModalHeader>
           <ModalCloseButton />
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -1476,6 +1486,17 @@ const BulkFlowers = () => {
                         ))}
                       </Select>
                     </FormControl>
+                    <FormControl display="flex" alignItems="center">
+                      <Switch
+                        id="isPrePack"
+                        isChecked={watch('isPrePack') || false}
+                        onChange={(e) => setValue('isPrePack', e.target.checked)}
+                        mr={3}
+                      />
+                      <FormLabel htmlFor="isPrePack" mb="0">
+                        Pre-Pack
+                      </FormLabel>
+                    </FormControl>
                   </VStack>
                 )}
 
@@ -1689,7 +1710,7 @@ const BulkFlowers = () => {
       <Modal isOpen={isBatchOpen} onClose={handleBatchClose} size="xl">
         <ModalOverlay />
         <ModalContent bg={colorMode === 'dark' ? 'gray.800' : 'white'}>
-          <ModalHeader>Batch Add Deli-Style Flower</ModalHeader>
+          <ModalHeader>Batch Add Flower</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <VStack spacing={4} align="stretch">
@@ -1914,4 +1935,4 @@ const BulkFlowers = () => {
   );
 };
 
-export default BulkFlowers;
+export default Flowers;
