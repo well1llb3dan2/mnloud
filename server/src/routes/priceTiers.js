@@ -25,10 +25,9 @@ router.post(
   '/',
   [
     body('name').trim().notEmpty().withMessage('Tier name required'),
-    body('prices.3.5g').isNumeric().withMessage('Price for 3.5g required'),
-    body('prices.7g').isNumeric().withMessage('Price for 7g required'),
-    body('prices.14g').isNumeric().withMessage('Price for 14g required'),
-    body('prices.28g').isNumeric().withMessage('Price for 28g required'),
+    body('prices').isArray({ min: 1 }).withMessage('At least one price point required'),
+    body('prices.*.quantity').isNumeric().withMessage('Quantity must be a number'),
+    body('prices.*.price').isNumeric().withMessage('Price must be a number'),
   ],
   handleValidation,
   createPriceTier

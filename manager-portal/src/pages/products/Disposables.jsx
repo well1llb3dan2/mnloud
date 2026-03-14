@@ -70,9 +70,6 @@ const Disposables = () => {
   const fileInputRef = useRef();
   const videoInputRef = useRef();
   const [addStep, setAddStep] = useState(1);
-  const [selectedType, setSelectedType] = useState('');
-  const [newTypeName, setNewTypeName] = useState('');
-  const [typeToRemove, setTypeToRemove] = useState('');
   const [brand, setBrand] = useState('');
   const [weight, setWeight] = useState('1g');
   const [flavorCount, setFlavorCount] = useState('');
@@ -95,7 +92,6 @@ const Disposables = () => {
 
   const [editFields, setEditFields] = useState({
     brand: '',
-    productType: '',
     weight: '',
     price: '',
     description: '',
@@ -106,12 +102,6 @@ const Disposables = () => {
   });
   const products = data?.products || [];
 
-  const { data: typeData } = useQuery({
-    queryKey: ['DisposableTypes'],
-    queryFn: productService.getDisposableTypes,
-  });
-  const DisposableTypes = typeData?.types || [];
-
   const createMutation = useMutation({
     mutationFn: productService.createDisposableBase,
   });
@@ -121,18 +111,18 @@ const Disposables = () => {
   });
 
   const addStrainMutation = useMutation({
-    mutationFn: ({ baseId, data }) => productService.addDisposablestrain(baseId, data),
+    mutationFn: ({ baseId, data }) => productService.addDisposableStrain(baseId, data),
   });
 
   const updateStrainMutation = useMutation({
-    mutationFn: ({ id, data }) => productService.updateDisposablestrain(id, data),
+    mutationFn: ({ id, data }) => productService.updateDisposableStrain(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['Disposables']);
     },
   });
 
   const deleteStrainMutation = useMutation({
-    mutationFn: (id) => productService.deleteDisposablestrain(id),
+    mutationFn: (id) => productService.deleteDisposableStrain(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['Disposables']);
     },
@@ -161,23 +151,9 @@ const Disposables = () => {
   });
 
   const toggleFlavorMutation = useMutation({
-    mutationFn: ({ id, isActive }) => productService.updateDisposablestrain(id, { isActive }),
+    mutationFn: ({ id, isActive }) => productService.updateDisposableStrain(id, { isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries(['Disposables']);
-    },
-  });
-
-  const createTypeMutation = useMutation({
-    mutationFn: productService.createDisposableType,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['DisposableTypes']);
-    },
-  });
-
-  const deleteTypeMutation = useMutation({
-    mutationFn: productService.deleteDisposableType,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['DisposableTypes']);
     },
   });
 
@@ -229,7 +205,6 @@ const Disposables = () => {
     setEditingProduct(product);
     setEditFields({
       brand: product.brand || '',
-      productType: product.productType || '',
       weight: product.weight || '',
       price: product.price || '',
       description: product.description || '',
@@ -260,9 +235,6 @@ const Disposables = () => {
   const handleAdd = () => {
     setEditingProduct(null);
     setAddStep(1);
-    setSelectedType('');
-    setNewTypeName('');
-    setTypeToRemove('');
     setBrand('');
     setWeight('1g');
     setFlavorCount('');
@@ -296,9 +268,8 @@ const Disposables = () => {
     [flavors]
   );
 
-  const stepOneValid = Boolean(selectedType || newTypeName.trim());
-  const stepTwoValid = Boolean(price) && Boolean(weight) && Number(flavorCount) > 0;
-  const stepThreeValid = flavorIsValid;
+  const stepOneValid = Boolean(price) && Boolean(weight) && Number(flavorCount) > 0;
+  const stepTwoValid = flavorIsValid;
 
   const handleCreate = async () => {
     const shouldCreate = await confirm({
@@ -311,7 +282,6 @@ const Disposables = () => {
 
     try {
       const formData = new FormData();
-      formData.append('productType', selectedType);
       formData.append('brand', brand || '');
       formData.append('weight', weight);
       formData.append('price', price);
@@ -349,76 +319,8 @@ const Disposables = () => {
     }
   };
 
-  const handleAddType = async () => {
-    const trimmed = newTypeName.trim();
-    if (!trimmed) return;
-    try {
-      await createTypeMutation.mutateAsync(trimmed);
-      setNewTypeName('');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error?.message || 'Failed to add type',
-        status: 'error',
-      });
-    }
-  };
-
-  const handleNextStep = async () => {
-    if (addStep === 1) {
-      const trimmed = newTypeName.trim();
-      if (!selectedType && trimmed) {
-        try {
-          await createTypeMutation.mutateAsync(trimmed);
-          setSelectedType(trimmed);
-          setNewTypeName('');
-        } catch (error) {
-          toast({
-            title: 'Error',
-            description: error?.message || 'Failed to add type',
-            status: 'error',
-          });
-          return;
-        }
-      }
-      if (!selectedType && !trimmed) {
-        toast({ title: 'Select or enter a type', status: 'warning' });
-        return;
-      }
-    }
-
+  const handleNextStep = () => {
     setAddStep((prev) => prev + 1);
-  };
-
-  const handleDeleteType = async (type) => {
-    const shouldDelete = await confirm({
-      title: 'Delete type',
-      message: `Delete "${type.name}"?`,
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
-    });
-    if (!shouldDelete) return;
-    try {
-      await deleteTypeMutation.mutateAsync(type._id);
-      if (selectedType === type.name) {
-        setSelectedType('');
-      }
-      if (typeToRemove === type._id) {
-        setTypeToRemove('');
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error?.message || 'Failed to delete type',
-        status: 'error',
-      });
-    }
-  };
-
-  const handleRemoveSelectedType = async () => {
-    const target = DisposableTypes.find((type) => type._id === typeToRemove);
-    if (!target) return;
-    await handleDeleteType(target);
   };
 
   const handleUpdate = async (event) => {
@@ -570,7 +472,7 @@ const Disposables = () => {
                   <Box flex="1" textAlign="left">
                     <HStack>
                       <Text>
-                        {product.brand ? `${product.brand} - ` : ''}{product.productType}
+                        {product.brand || 'Disposable'}
                       </Text>
                       <Badge colorScheme={product.isActive ? 'green' : 'red'}>
                         {product.isActive ? 'Active' : 'Inactive'}
@@ -597,7 +499,6 @@ const Disposables = () => {
                   <HStack justify="space-between" align="start">
                     <VStack align="start" spacing={1}>
                       <Text>Brand: {product.brand || '—'}</Text>
-                      <Text>Type: {product.productType}</Text>
                       <Text>Weight: {product.weight}</Text>
                       <Text>Price: ${product.price}</Text>
                       <Text>Description: {product.description || '—'}</Text>
@@ -616,7 +517,7 @@ const Disposables = () => {
                         onClick={async () => {
                           const shouldDelete = await confirm({
                             title: 'Delete product',
-                            message: `Delete ${product.brand ? `${product.brand} - ` : ''}${product.productType}?`,
+                            message: `Delete ${product.brand || 'this Disposable'}?`,
                             confirmText: 'Delete',
                             cancelText: 'Cancel',
                           });
@@ -667,43 +568,15 @@ const Disposables = () => {
           <ModalBody>
             <VStack spacing={6} align="stretch">
               <HStack justify="space-between">
-                <Text fontWeight="semibold">Step {addStep} of 4</Text>
+                <Text fontWeight="semibold">Step {addStep} of 3</Text>
                 <Text color="gray.500">
-                  {addStep === 1 && 'Choose Disposable type'}
-                  {addStep === 2 && 'Base details'}
-                  {addStep === 3 && 'Flavor details'}
-                  {addStep === 4 && 'Preview & confirm'}
+                  {addStep === 1 && 'Base details'}
+                  {addStep === 2 && 'Flavor details'}
+                  {addStep === 3 && 'Preview & confirm'}
                 </Text>
               </HStack>
 
               {addStep === 1 && (
-                <VStack align="stretch" spacing={4}>
-                  <Text fontWeight="semibold">Select a Disposable type</Text>
-                  <VStack spacing={3} align="stretch">
-                    {DisposableTypes.map((type) => (
-                      <Button
-                        key={type._id}
-                        variant={selectedType === type.name ? 'solid' : 'outline'}
-                        colorScheme="purple"
-                        onClick={() => setSelectedType(type.name)}
-                        w="100%"
-                      >
-                        {type.name}
-                      </Button>
-                    ))}
-                  </VStack>
-                  {DisposableTypes.length === 0 && (
-                    <Text color="gray.500">No Disposable types yet. Add one below.</Text>
-                  )}
-                  <Input
-                    placeholder="Type a new Disposable type"
-                    value={newTypeName}
-                    onChange={(e) => setNewTypeName(e.target.value)}
-                  />
-                </VStack>
-              )}
-
-              {addStep === 2 && (
                 <VStack spacing={4} align="stretch">
                   <Box w="100%" textAlign="center">
                     <Input
@@ -806,7 +679,7 @@ const Disposables = () => {
                 </VStack>
               )}
 
-              {addStep === 3 && (
+              {addStep === 2 && (
                 <VStack spacing={4} align="stretch">
                   <Text fontWeight="semibold">Flavor details</Text>
                   {flavors.map((flavor, index) => (
@@ -847,7 +720,7 @@ const Disposables = () => {
                 </VStack>
               )}
 
-              {addStep === 4 && (
+              {addStep === 3 && (
                 <VStack spacing={4} align="stretch">
                   <Text fontWeight="semibold">Sample card preview</Text>
                   <Box
@@ -863,7 +736,7 @@ const Disposables = () => {
                     )}
                     <VStack align="start" spacing={2} p={4}>
                       <Text fontWeight="bold">
-                        {brand ? `${brand} - ` : ''}{selectedType || 'Disposable'}
+                        {brand || 'Disposable'}
                       </Text>
                       <HStack spacing={3}>
                         <Badge colorScheme="purple">{weight}</Badge>
@@ -906,20 +779,19 @@ const Disposables = () => {
                 >
                   Back
                 </Button>
-                {addStep < 4 && (
+                {addStep < 3 && (
                   <Button
                     colorScheme="purple"
                     onClick={handleNextStep}
                     isDisabled={
                       (addStep === 1 && !stepOneValid) ||
-                      (addStep === 2 && !stepTwoValid) ||
-                      (addStep === 3 && !stepThreeValid)
+                      (addStep === 2 && !stepTwoValid)
                     }
                   >
                     Next
                   </Button>
                 )}
-                {addStep === 4 && (
+                {addStep === 3 && (
                   <Button
                     colorScheme="purple"
                     onClick={handleCreate}
@@ -1006,24 +878,7 @@ const Disposables = () => {
                   <Text fontSize="sm" color="gray.500">Brand</Text>
                   <Text fontWeight="semibold">{editFields.brand || '—'}</Text>
                 </VStack>
-                <VStack align="stretch" spacing={3}>
-                  <Text fontSize="sm" color="gray.500">Disposable Type</Text>
-                  <HStack spacing={2} flexWrap="wrap">
-                    {DisposableTypes.map((type) => (
-                      <Button
-                        key={`edit-type-${type._id}`}
-                        size="sm"
-                        variant={editFields.productType === type.name ? 'solid' : 'outline'}
-                        colorScheme="purple"
-                        onClick={() =>
-                          setEditFields((prev) => ({ ...prev, productType: type.name }))
-                        }
-                      >
-                        {type.name}
-                      </Button>
-                    ))}
-                  </HStack>
-                </VStack>
+
                 <VStack align="start" spacing={1}>
                   <Text fontSize="sm" color="gray.500">Weight / Size</Text>
                   <Text fontWeight="semibold">{editFields.weight || '—'}</Text>
@@ -1177,7 +1032,7 @@ const Disposables = () => {
                 type="submit"
                 colorScheme="purple"
                 isLoading={updateMutation.isPending}
-                isDisabled={!editFields.productType || !editFields.weight || !editFields.price}
+                isDisabled={!editFields.weight || !editFields.price}
               >
                 Save
               </Button>

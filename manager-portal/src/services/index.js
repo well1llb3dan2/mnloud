@@ -196,21 +196,6 @@ export const productService = {
     return response.data;
   },
 
-  getDisposableTypes: async () => {
-    const response = await api.get('/products/disposable-types');
-    return response.data;
-  },
-
-  createDisposableType: async (name) => {
-    const response = await api.post('/products/disposable-types', { name });
-    return response.data;
-  },
-
-  deleteDisposableType: async (id) => {
-    const response = await api.delete(`/products/disposable-types/${id}`);
-    return response.data;
-  },
-
   createDisposableBase: async (formData) => {
     const response = await api.post('/products/disposables', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

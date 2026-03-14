@@ -25,9 +25,7 @@ import {
   addDisposableStrain,
   updateDisposableStrain,
   deleteDisposableStrain,
-  getDisposableTypes,
-  createDisposableType,
-  deleteDisposableType,
+
   // Edibles
   getEdibleTypes,
   createEdibleType,
@@ -70,10 +68,6 @@ router.get('/concentrate-types', getConcentrateTypes);
 router.post('/concentrate-types', createConcentrateType);
 router.delete('/concentrate-types/:id', deleteConcentrateType);
 
-// Disposable Types
-router.get('/disposable-types', getDisposableTypes);
-router.post('/disposable-types', createDisposableType);
-router.delete('/disposable-types/:id', deleteDisposableType);
 
 // Edible Types
 router.get('/edible-types', getEdibleTypes);

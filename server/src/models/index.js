@@ -15,5 +15,5 @@ export { Message, Conversation } from './Message.js';
 export { default as Order } from './Order.js';
 export { default as PushSubscription } from './PushSubscription.js';
 export { default as ConcentrateType } from './ConcentrateType.js';
-export { default as DisposableType } from './DisposableType.js';
+
 export { default as EdibleType } from './EdibleType.js';

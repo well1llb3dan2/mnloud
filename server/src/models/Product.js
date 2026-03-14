@@ -161,11 +161,6 @@ const disposableBaseSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
-  productType: {
-    type: String, // e.g., "Disposable Vape", "Pen"
-    required: true,
-    trim: true,
-  },
   weight: {
     type: String, // e.g., "500mg", "1g"
     required: true,

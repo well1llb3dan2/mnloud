@@ -7,7 +7,7 @@ import {
   Edible,
   Strain,
   ConcentrateType,
-  DisposableType,
+
   EdibleType,
 } from '../models/index.js';
 import { emitToRoom } from '../socket/bus.js';
@@ -667,8 +667,8 @@ export const createDisposableBase = async (req, res) => {
       data.lastActivatedAt = new Date();
     }
 
-    if (!data.name && data.productType) {
-      data.name = data.brand ? `${data.brand} - ${data.productType}` : data.productType;
+    if (!data.name && data.brand) {
+      data.name = data.brand;
     }
     
     const imageFile = req.files?.image?.[0] || req.file;
@@ -697,8 +697,8 @@ export const updateDisposableBase = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    if (!data.name && data.productType) {
-      data.name = data.brand ? `${data.brand} - ${data.productType}` : data.productType;
+    if (!data.name && data.brand) {
+      data.name = data.brand;
     }
     
     const base = await DisposableBase.findById(id);
@@ -874,53 +874,8 @@ export const deleteDisposableStrain = async (req, res) => {
 // DISPOSABLE TYPES
 // =====================
 
-export const getDisposableTypes = async (req, res) => {
-  try {
-    const types = await DisposableType.find().sort({ name: 1 });
-    res.json({ types });
-  } catch (error) {
-    console.error('Get disposable types error:', error);
-    res.status(500).json({ message: 'Server error fetching disposable types' });
-  }
-};
 
-export const createDisposableType = async (req, res) => {
-  try {
-    const { name } = req.body;
-    const trimmed = String(name || '').trim();
-    if (!trimmed) {
-      return res.status(400).json({ message: 'Name is required' });
-    }
 
-    const nameLower = trimmed.toLowerCase();
-    const existing = await DisposableType.findOne({ nameLower });
-    if (existing) {
-      return res.status(200).json({ type: existing });
-    }
-
-    const type = await DisposableType.create({ name: trimmed, nameLower });
-    res.status(201).json({ type });
-  } catch (error) {
-    console.error('Create disposable type error:', error);
-    res.status(500).json({ message: 'Server error creating disposable type' });
-  }
-};
-
-export const deleteDisposableType = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const type = await DisposableType.findById(id);
-    if (!type) {
-      return res.status(404).json({ message: 'Type not found' });
-    }
-
-    await type.deleteOne();
-    res.json({ message: 'Type deleted' });
-  } catch (error) {
-    console.error('Delete disposable type error:', error);
-    res.status(500).json({ message: 'Server error deleting disposable type' });
-  }
-};
 
 // =====================
 // EDIBLE TYPES
