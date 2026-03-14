@@ -89,7 +89,17 @@ export const deleteMedia = async (mediaPath, { role = 'manager' } = {}) => {
 
 export const getSignedMediaUrl = async (mediaPath, { expiresIn, role = 'customer' } = {}) => {
   if (!mediaPath || !isR2Enabled(role)) return null;
-  const client = getR2Client({ role, publicEndpoint: true });
+
+  // If a public custom domain is configured, use direct public URLs
+  // (R2 custom domains serve objects publicly; signed URLs with forcePathStyle
+  // break because the bucket name gets inserted into the path)
+  const publicEndpoint = process.env.R2_PUBLIC_ENDPOINT;
+  if (publicEndpoint) {
+    return `${publicEndpoint.replace(/\/+$/, '')}/${mediaPath}`;
+  }
+
+  // Fall back to signed URL via S3 API endpoint (for private buckets)
+  const client = getR2Client({ role });
   if (!client) return null;
   const { bucket } = getRoleConfig(role);
   const ttl = Number(expiresIn || process.env.R2_SIGNED_URL_TTL || 900);
