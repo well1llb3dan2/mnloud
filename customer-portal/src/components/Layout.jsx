@@ -7,7 +7,7 @@ import {
   FiClipboard,
   FiUser,
 } from 'react-icons/fi';
-import { useCartStore, useChatStore } from '../stores';
+import { useAuthStore, useCartStore, useChatStore } from '../stores';
 import { useBackButton } from '../hooks';
 
 const NavItem = ({ icon, label, path, badge }) => {
@@ -51,6 +51,7 @@ const NavItem = ({ icon, label, path, badge }) => {
 const Layout = () => {
   // Handle back button behavior for PWA
   useBackButton();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const cartCount = useCartStore((state) => state.getItemCount());
   const unreadCount = useChatStore((state) => state.unreadCount);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -76,7 +77,7 @@ const Layout = () => {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const showInstallButton = !isStandalone && (Boolean(deferredPrompt) || isIos);
+  const showInstallButton = !isStandalone && isAuthenticated && (Boolean(deferredPrompt) || isIos);
 
   const handleInstallClick = () => {
     setShowInstallGuide(true);

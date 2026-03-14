@@ -114,7 +114,8 @@ const Layout = () => {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const showInstallButton = !isStandalone && (Boolean(deferredPrompt) || isIos);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const showInstallButton = !isStandalone && isAuthenticated && (Boolean(deferredPrompt) || isIos);
 
   const handleInstallPrompt = async () => {
     if (!deferredPrompt) return;
