@@ -11,8 +11,10 @@ export const sendPasswordResetEmail = async (toEmail, resetUrl) => {
 
   const { data, error } = await resend.emails.send({
     from: `MN Loud <${config.resend.fromEmail}>`,
+    replyTo: config.resend.fromEmail,
     to: toEmail,
     subject: 'Reset Your Password',
+    text: `Password Reset\n\nWe received a request to reset your password. Click the link below to choose a new one. This link will expire in 1 hour.\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email.`,
     html: `
       <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
         <h2 style="margin-bottom: 16px;">Password Reset</h2>
