@@ -10,7 +10,7 @@ const ensureConfigured = () => {
   if (!publicKey || !privateKey) {
     return false;
   }
-  webpush.setVapidDetails(subject || 'mailto:support@nexgrex.com', publicKey, privateKey);
+  webpush.setVapidDetails(subject || 'mailto:support@mnloud.com', publicKey, privateKey);
   isConfigured = true;
   return true;
 };

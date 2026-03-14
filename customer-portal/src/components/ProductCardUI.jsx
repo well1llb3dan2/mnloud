@@ -5,19 +5,19 @@ import { useToast } from './ToastProvider';
 
 const getImageUrl = (image) => {
   if (!image) return '/icons/icon-512x512.png';
-  const isHosted = window.location.hostname.endsWith('nexgrex.com');
-  const apiBase = isHosted
-    ? 'https://api.nexgrex.com'
-    : (import.meta.env.VITE_API_URL || '').replace(/\/?api\/?$/, '');
+  const hostname = window.location.hostname;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const apiBase = (import.meta.env.VITE_API_URL || (isLocalhost ? '' : 'https://api.mnloud.com'))
+    .replace(/\/?api\/?$/, '');
   return `${apiBase}/uploads/${image.replace('uploads/', '')}`;
 };
 
 const getVideoUrl = (video) => {
   if (!video) return null;
-  const isHosted = window.location.hostname.endsWith('nexgrex.com');
-  const apiBase = isHosted
-    ? 'https://api.nexgrex.com'
-    : (import.meta.env.VITE_API_URL || '').replace(/\/?api\/?$/, '');
+  const hostname = window.location.hostname;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const apiBase = (import.meta.env.VITE_API_URL || (isLocalhost ? '' : 'https://api.mnloud.com'))
+    .replace(/\/?api\/?$/, '');
   return `${apiBase}/uploads/${video.replace('uploads/', '')}`;
 };
 

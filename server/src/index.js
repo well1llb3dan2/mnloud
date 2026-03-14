@@ -47,7 +47,7 @@ const isOriginAllowed = (origin) => {
   if (corsOrigins.includes(origin)) return true;
   try {
     const { hostname } = new URL(origin);
-    if (hostname.endsWith('.nexgrex.com') || hostname === 'nexgrex.com') {
+    if (hostname.endsWith('.mnloud.com') || hostname === 'mnloud.com') {
       return true;
     }
   } catch {

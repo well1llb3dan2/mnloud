@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
-const isHosted = window.location.hostname.endsWith('nexgrex.com');
-const API_URL = isHosted
-  ? (import.meta.env.VITE_API_URL || 'https://api.nexgrex.com/api')
-  : import.meta.env.VITE_API_URL || '/api';
+const hostname = window.location.hostname;
+const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+const API_URL = import.meta.env.VITE_API_URL || (isLocalhost
+  ? '/api'
+  : 'https://api.mnloud.com/api');
 console.log('API_URL configured as:', API_URL);
 
 const api = axios.create({

@@ -74,7 +74,7 @@ export default defineConfig({
   ],
   server: {
     port: 3001,
-    allowedHosts: ['manager.nexgrex.com'],
+    allowedHosts: ['manager.mnloud.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
