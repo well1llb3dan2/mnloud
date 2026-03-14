@@ -111,3 +111,24 @@ export const toggleUserStatus = async (req, res) => {
     res.status(500).json({ message: 'Server error toggling user status' });
   }
 };
+
+// Toggle user mute notifications
+export const toggleMuteNotifications = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.muteNotifications = !user.muteNotifications;
+    await user.save();
+
+    res.json({ user: user.toJSON() });
+  } catch (error) {
+    console.error('Toggle mute notifications error:', error);
+    res.status(500).json({ message: 'Server error toggling mute' });
+  }
+};

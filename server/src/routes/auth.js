@@ -65,6 +65,7 @@ router.patch(
     body('firstName').optional().trim(),
     body('lastName').optional().trim(),
     body('nickname').optional().trim(),
+    body('muteNotifications').optional().isBoolean(),
   ],
   handleValidation,
   updateProfile

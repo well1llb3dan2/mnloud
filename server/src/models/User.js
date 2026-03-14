@@ -88,6 +88,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  muteNotifications: {
+    type: Boolean,
+    default: false,
+  },
   refreshTokens: [{
     token: String,
     createdAt: {

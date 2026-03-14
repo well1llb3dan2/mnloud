@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import {
   Box,
   VStack,
+  HStack,
   Text,
   Button,
   FormControl,
@@ -13,8 +14,9 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
+  Switch,
 } from '@chakra-ui/react';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiBell, FiBellOff } from 'react-icons/fi';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '../stores';
 import { authService } from '../services';
@@ -70,6 +72,17 @@ const Profile = () => {
         title: 'Error',
         description: error.message,
         status: 'error',
+      });
+    },
+  });
+
+  const muteMutation = useMutation({
+    mutationFn: (muted) => authService.updateProfile({ muteNotifications: muted }),
+    onSuccess: (data) => {
+      setUser(data.user);
+      toast({
+        title: data.user?.muteNotifications ? 'Notifications muted' : 'Notifications unmuted',
+        status: 'success',
       });
     },
   });
@@ -139,6 +152,31 @@ const Profile = () => {
               </Button>
             </VStack>
           </form>
+        </Box>
+
+        {/* Notification Preferences */}
+        <Box
+          bg={colorMode === 'dark' ? 'gray.800' : 'white'}
+          p={6}
+          borderRadius="lg"
+          boxShadow="md"
+        >
+          <VStack spacing={4}>
+            <Text fontWeight="bold" alignSelf="start">
+              Notifications
+            </Text>
+            <HStack w="100%" justify="space-between">
+              <HStack spacing={3}>
+                {user?.muteNotifications ? <FiBellOff size={20} /> : <FiBell size={20} />}
+                <Text>{user?.muteNotifications ? 'Notifications muted' : 'Notifications enabled'}</Text>
+              </HStack>
+              <Switch
+                isChecked={!user?.muteNotifications}
+                onChange={() => muteMutation.mutate(!user?.muteNotifications)}
+                colorScheme="purple"
+              />
+            </HStack>
+          </VStack>
         </Box>
 
         {/* Password Form */}

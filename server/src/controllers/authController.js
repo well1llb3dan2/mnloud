@@ -179,13 +179,14 @@ export const getMe = async (req, res) => {
 // Update profile
 export const updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, nickname } = req.body;
+    const { firstName, lastName, nickname, muteNotifications } = req.body;
     
     const user = await User.findById(req.user._id);
     
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (nickname !== undefined) user.nickname = nickname;
+    if (muteNotifications !== undefined) user.muteNotifications = muteNotifications;
     
     await user.save();
     

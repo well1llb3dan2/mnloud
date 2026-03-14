@@ -71,6 +71,11 @@ export const userService = {
     return response.data;
   },
 
+  toggleMuteNotifications: async (id) => {
+    const response = await api.patch(`/users/users/${id}/toggle-mute`);
+    return response.data;
+  },
+
   createInvite: async (role = 'customer') => {
     const response = await api.post('/users/invites', { role });
     return response.data;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiLogOut, FiLock, FiUser } from 'react-icons/fi';
+import { FiLogOut, FiLock, FiUser, FiBellOff, FiBell } from 'react-icons/fi';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '../stores';
 import { authService } from '../services';
@@ -14,6 +14,7 @@ const Profile = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const { user, logout, updateUser } = useAuthStore();
+  const [isMuting, setIsMuting] = useState(false);
 
   const profileForm = useForm({
     defaultValues: {
@@ -73,6 +74,28 @@ const Profile = () => {
     navigate('/login', { replace: true });
   };
 
+  const handleToggleMute = async () => {
+    setIsMuting(true);
+    try {
+      const newValue = !user?.muteNotifications;
+      const response = await authService.updateProfile({ muteNotifications: newValue });
+      updateUser(response.user);
+      toast({
+        title: newValue ? 'Notifications muted' : 'Notifications unmuted',
+        status: 'success',
+        duration: 2000,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error updating notifications',
+        status: 'error',
+        duration: 3000,
+      });
+    } finally {
+      setIsMuting(false);
+    }
+  };
+
   return (
     <section className="page">
       <div style={{ display: 'grid', gap: 16 }}>
@@ -98,6 +121,14 @@ const Profile = () => {
         </div>
 
         <div className="panel" style={{ display: 'grid', gap: 12 }}>
+          <button
+            className={`button ${user?.muteNotifications ? 'secondary' : ''}`}
+            type="button"
+            onClick={handleToggleMute}
+            disabled={isMuting}
+          >
+            {user?.muteNotifications ? <><FiBellOff /> Notifications Muted</> : <><FiBell /> Mute Notifications</>}
+          </button>
           <button className="button" type="button" onClick={() => setIsPasswordOpen(true)}>
             <FiLock /> Change Password
           </button>

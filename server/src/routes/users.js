@@ -8,6 +8,7 @@ import {
   getCustomers,
   getManagers,
   toggleUserStatus,
+  toggleMuteNotifications,
 } from '../controllers/userController.js';
 
 const router = express.Router();
@@ -32,5 +33,6 @@ router.delete('/invites/:id', deleteInvite);
 router.get('/customers', getCustomers);
 router.get('/managers', getManagers);
 router.patch('/users/:id/toggle-status', toggleUserStatus);
+router.patch('/users/:id/toggle-mute', toggleMuteNotifications);
 
 export default router;

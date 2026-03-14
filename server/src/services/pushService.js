@@ -1,6 +1,6 @@
 import webpush from 'web-push';
 import config from '../config/index.js';
-import { PushSubscription } from '../models/index.js';
+import { PushSubscription, User } from '../models/index.js';
 
 let isConfigured = false;
 
@@ -59,12 +59,17 @@ export const removeSubscription = async (endpoint) => {
 
 export const sendPushToUser = async (userId, payload) => {
   if (!ensureConfigured()) return;
+  const user = await User.findById(userId).select('muteNotifications').lean();
+  if (user?.muteNotifications) return;
   const subscriptions = await PushSubscription.find({ user: userId });
   await Promise.all(subscriptions.map((sub) => sendToSubscription(sub, payload)));
 };
 
 export const sendPushToRole = async (role, payload) => {
   if (!ensureConfigured()) return;
+  const mutedUsers = await User.find({ role, muteNotifications: true }).select('_id').lean();
+  const mutedIds = new Set(mutedUsers.map((u) => u._id.toString()));
   const subscriptions = await PushSubscription.find({ role });
-  await Promise.all(subscriptions.map((sub) => sendToSubscription(sub, payload)));
+  const active = subscriptions.filter((sub) => !mutedIds.has(sub.user.toString()));
+  await Promise.all(active.map((sub) => sendToSubscription(sub, payload)));
 };

@@ -16,7 +16,10 @@ import {
   Tab,
   TabPanels,
   TabPanel,
+  IconButton,
+  Tooltip,
 } from '@chakra-ui/react';
+import { FiBell, FiBellOff } from 'react-icons/fi';
 import { userService } from '../services';
 
 const Users = () => {
@@ -43,6 +46,15 @@ const Users = () => {
       queryClient.invalidateQueries(['customers']);
       queryClient.invalidateQueries(['managers']);
       toast({ title: 'User updated', status: 'success' });
+    },
+  });
+
+  const muteMutation = useMutation({
+    mutationFn: (id) => userService.toggleMuteNotifications(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['customers']);
+      queryClient.invalidateQueries(['managers']);
+      toast({ title: 'Notification setting updated', status: 'success' });
     },
   });
 
@@ -76,15 +88,27 @@ const Users = () => {
             ) : null}
           </VStack>
         </HStack>
-        <Switch
-          isChecked={user.isActive}
-          onChange={(e) =>
-            toggleMutation.mutate({
-              id: user._id,
-              isActive: e.target.checked,
-            })
-          }
-        />
+        <HStack spacing={2}>
+          <Tooltip label={user.muteNotifications ? 'Unmute notifications' : 'Mute notifications'}>
+            <IconButton
+              icon={user.muteNotifications ? <FiBellOff /> : <FiBell />}
+              variant="ghost"
+              size="sm"
+              colorScheme={user.muteNotifications ? 'red' : 'gray'}
+              onClick={() => muteMutation.mutate(user._id)}
+              aria-label="Toggle mute"
+            />
+          </Tooltip>
+          <Switch
+            isChecked={user.isActive}
+            onChange={(e) =>
+              toggleMutation.mutate({
+                id: user._id,
+                isActive: e.target.checked,
+              })
+            }
+          />
+        </HStack>
       </HStack>
     </Box>
     );
