@@ -19,7 +19,7 @@ const baseProductFields = {
   },
   isActive: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   lastActivatedAt: {
     type: Date,

@@ -15,11 +15,9 @@ import {
   Avatar,
   Flex,
   Image,
-  Select,
-  Divider,
 } from '@chakra-ui/react';
 import { FiSend, FiArrowLeft, FiImage, FiCheck, FiCheckCircle } from 'react-icons/fi';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { authService, chatService, orderService } from '../services';
 import { useChatStore, useAuthStore } from '../stores';
 import { useSocket } from '../context/SocketContext';
@@ -115,22 +113,6 @@ const ChatDetail = () => {
     return acc;
   }, {});
 
-  const getItemTotal = (item) => {
-    if (typeof item.priceTotal === 'number') return item.priceTotal;
-    if (typeof item.priceEach === 'number' && typeof item.quantity === 'number') {
-      return item.priceEach * item.quantity;
-    }
-    return 0;
-  };
-
-  const getOrderTotal = (order) => {
-    if (typeof order?.total === 'number') return order.total;
-    if (Array.isArray(order?.items)) {
-      return order.items.reduce((sum, item) => sum + getItemTotal(item), 0);
-    }
-    return 0;
-  };
-
   const formatRelativeTime = (value) => {
     if (!value) return '';
     try {
@@ -139,30 +121,6 @@ const ChatDetail = () => {
       return '';
     }
   };
-
-  const { data: pendingOrdersData } = useQuery({
-    queryKey: ['orders', 'pending', conversation?.customer?._id],
-    queryFn: () => orderService.getAll({ status: 'pending', limit: 500 }),
-    enabled: Boolean(conversation?.customer?._id),
-  });
-
-  const { data: confirmedOrdersData } = useQuery({
-    queryKey: ['orders', 'confirmed', conversation?.customer?._id],
-    queryFn: () => orderService.getAll({ status: 'confirmed', limit: 500 }),
-    enabled: Boolean(conversation?.customer?._id),
-  });
-
-  const customerId = conversation?.customer?._id;
-  const pendingOrders = (pendingOrdersData?.orders || []).filter(
-    (order) => String(order.customer?._id) === String(customerId)
-  );
-  const confirmedOrders = (confirmedOrdersData?.orders || []).filter(
-    (order) => String(order.customer?._id) === String(customerId)
-  );
-
-  const pinnedOrder = pendingOrders[0] || confirmedOrders[0] || null;
-  const pinnedLabel = pendingOrders.length > 0 ? 'Order pending' : confirmedOrders.length > 0 ? 'Order confirmed' : '';
-  const pinnedBarHeight = pinnedOrder ? 56 : 0;
 
   // Set current conversation in store when loaded
   useEffect(() => {
@@ -346,14 +304,6 @@ const ChatDetail = () => {
     },
   });
 
-  const orderStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => orderService.updateStatus(id, status),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries(['orders']);
-      queryClient.invalidateQueries(['orderByMessage', variables.messageId]);
-    },
-  });
-
   const handleSend = async () => {
     if (!message.trim() || !user?._id) return;
 
@@ -484,7 +434,7 @@ const ChatDetail = () => {
       <Box
         position="fixed"
         top={`${customerBarHeight}px`}
-        bottom={`${navBarHeight + inputBarHeight + pinnedBarHeight}px`}
+        bottom={`${navBarHeight + inputBarHeight}px`}
         left={0}
         right={0}
         overflowY="auto"
@@ -505,8 +455,6 @@ const ChatDetail = () => {
             const isManager = msg.sender?.role === 'manager';
             const isOrder = msg.messageType === 'order';
             const order = ordersByMessageId[msg._id];
-            const orderItems = order?.items || msg.orderData?.items || [];
-            const orderStatus = order?.status || 'pending';
 
             return (
               <Flex
@@ -535,58 +483,19 @@ const ChatDetail = () => {
                       borderRadius="md"
                     />
                   ) : isOrder ? (
-                    <Box
-                      bg={colorMode === 'dark' ? 'gray.800' : 'white'}
-                      color={colorMode === 'dark' ? 'white' : 'gray.800'}
-                      borderRadius="md"
-                      p={3}
+                    <Button
+                      size="sm"
+                      colorScheme="purple"
+                      variant="outline"
+                      onClick={() => {
+                        if (order?._id) {
+                          navigate('/orders', { state: { openOrderId: order._id } });
+                        }
+                      }}
+                      isDisabled={!order?._id}
                     >
-                      <Text fontWeight="bold" mb={2}>
-                        Order
-                      </Text>
-                      <VStack align="stretch" spacing={2} fontSize="sm">
-                        {orderItems.map((item, idx) => (
-                          <HStack key={`${msg._id}-item-${idx}`} justify="space-between">
-                            <VStack align="start" spacing={0}>
-                              <Text>{item.productName}</Text>
-                              <Text fontSize="xs" color="gray.500">
-                                {item.quantity}x @ ${item.priceEach ?? item.price ?? 0}
-                              </Text>
-                            </VStack>
-                            <Text fontWeight="bold">${getItemTotal(item).toFixed(2)}</Text>
-                          </HStack>
-                        ))}
-                      </VStack>
-                      <Divider my={2} />
-                      <HStack justify="space-between">
-                        <Text fontWeight="bold">Total</Text>
-                        <Text fontWeight="bold">${getOrderTotal(order).toFixed(2)}</Text>
-                      </HStack>
-                      <Box mt={3}>
-                        <Text fontSize="xs" color="gray.500" mb={1}>
-                          Status
-                        </Text>
-                        <Select
-                          size="sm"
-                          value={orderStatus}
-                          onChange={(e) => {
-                            if (!order?._id) return;
-                            orderStatusMutation.mutate({
-                              id: order._id,
-                              status: e.target.value,
-                              messageId: msg._id,
-                            });
-                          }}
-                          isDisabled={!order?._id || orderStatusMutation.isPending}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="ready">Ready for Pickup</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
-                        </Select>
-                      </Box>
-                    </Box>
+                      Order #{(order?._id || msg._id).slice(-6).toUpperCase()} &bull; {format(new Date(msg.createdAt), 'MMM d, h:mm a')}
+                    </Button>
                   ) : (
                     <Text>{msg.content}</Text>
                   )}
@@ -611,28 +520,6 @@ const ChatDetail = () => {
       </Box>
 
       {/* Input */}
-      {pinnedOrder ? (
-        <Box
-          px={4}
-          pb={2}
-          bg={colorMode === 'dark' ? 'gray.800' : 'white'}
-          borderTopWidth={1}
-          borderColor={colorMode === 'dark' ? 'gray.700' : 'gray.200'}
-          position="fixed"
-          bottom={`${navBarHeight + inputBarHeight}px`}
-          left={0}
-          right={0}
-          zIndex={99}
-        >
-          <Button
-            colorScheme={pendingOrders.length > 0 ? 'yellow' : 'blue'}
-            w="100%"
-            onClick={() => navigate('/orders', { state: { openOrderId: pinnedOrder._id } })}
-          >
-            {pinnedLabel}
-          </Button>
-        </Box>
-      ) : null}
       <Box
         p={4}
         bg={colorMode === 'dark' ? 'gray.800' : 'white'}

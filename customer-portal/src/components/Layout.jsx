@@ -48,9 +48,26 @@ const NavItem = ({ icon, label, path, badge }) => {
   );
 };
 
+const pageTitles = {
+  '/': 'Shop',
+  '/products': 'Shop',
+  '/cart': 'Cart',
+  '/chat': 'Chat',
+  '/orders': 'Orders',
+  '/profile': 'Profile',
+};
+
+const categoryTitles = {
+  flower: '🌿 Flower',
+  disposables: '💨 Disposables',
+  concentrates: '🧪 Concentrates',
+  edibles: '🍬 Edibles',
+};
+
 const Layout = () => {
   // Handle back button behavior for PWA
   useBackButton();
+  const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const cartCount = useCartStore((state) => state.getItemCount());
   const unreadCount = useChatStore((state) => state.unreadCount);
@@ -93,16 +110,23 @@ const Layout = () => {
     }
   };
 
+  const pageTitle = (() => {
+    const match = location.pathname.match(/^\/products\/(.+)/);
+    if (match) return categoryTitles[match[1]] || match[1];
+    return pageTitles[location.pathname] || 'Shop';
+  })();
+
   return (
     <div className="app-shell">
-      <main className="app-content">
+      <header className="top-bar">
+        <h2 className="top-bar-title">{pageTitle}</h2>
         {showInstallButton && (
-          <div className="install-banner">
-            <button type="button" className="button" onClick={handleInstallClick}>
-              {isIos ? 'Add to Home Screen' : 'Install App'}
-            </button>
-          </div>
+          <button type="button" className="button top-bar-install" onClick={handleInstallClick}>
+            {isIos ? 'Install' : 'Install'}
+          </button>
         )}
+      </header>
+      <main className="app-content">
         <Outlet />
       </main>
 

@@ -29,12 +29,8 @@ import { useConfirmDialog } from '../components/ConfirmDialog';
 
 const statusColors = {
   pending: 'yellow',
-  confirmed: 'blue',
   completed: 'green',
-  cancelled: 'red',
 };
-
-const statusSteps = ['pending', 'confirmed', 'completed', 'cancelled'];
 
 const getItemTotal = (item) => {
   if (typeof item.priceTotal === 'number') return item.priceTotal;
@@ -53,8 +49,8 @@ const getOrderTotal = (order) => {
 };
 
 const categoryLabels = {
-  bulk: 'Deli-Style Flower',
-  packaged: 'Pre-Pack Flower',
+  flower: 'Flower',
+  disposable: 'Disposables',
   concentrate: 'Concentrates',
   edible: 'Edibles',
 };
@@ -121,13 +117,6 @@ const Orders = () => {
     updateMutation.mutate({ id: orderId, status: newStatus });
   };
 
-  const getNextStatus = (status) => {
-    const idx = statusSteps.indexOf(status);
-    if (idx === -1) return null;
-    if (status === 'completed' || status === 'cancelled') return null;
-    return statusSteps[idx + 1] || null;
-  };
-
   if (isLoading) {
     return (
       <Center h="50vh">
@@ -150,9 +139,7 @@ const Orders = () => {
             placeholder="All Status"
           >
             <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
             <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
           </Select>
         </HStack>
 
@@ -266,90 +253,31 @@ const Orders = () => {
                 <Divider />
 
                 {/* Status Update */}
-                <Box>
-                  <Text fontWeight="bold" mb={3}>
-                    Order Status
-                  </Text>
-                  <Box
-                    bg={colorMode === 'dark' ? 'gray.700' : 'gray.100'}
-                    borderRadius="lg"
-                    p={4}
+                {selectedOrder.status === 'pending' ? (
+                  <Button
+                    colorScheme="green"
+                    w="100%"
+                    size="lg"
+                    onClick={async () => {
+                      const shouldUpdate = await confirm({
+                        title: 'Complete order',
+                        message: 'Mark this order as completed?',
+                        confirmText: 'Complete',
+                        cancelText: 'Cancel',
+                      });
+                      if (shouldUpdate) {
+                        handleStatusChange(selectedOrder._id, 'completed');
+                      }
+                    }}
+                    isLoading={updateMutation.isPending}
                   >
-                    <Box position="relative" h="12px" mb={6}>
-                      <Box
-                        position="absolute"
-                        top="50%"
-                        left={0}
-                        right={0}
-                        height="2px"
-                        bg={colorMode === 'dark' ? 'gray.600' : 'gray.300'}
-                        transform="translateY(-50%)"
-                      />
-                      <HStack justify="space-between" position="relative">
-                        {statusSteps.map((status) => {
-                          const isActive = selectedOrder.status === status;
-                          const isCompleted =
-                            statusSteps.indexOf(status) < statusSteps.indexOf(selectedOrder.status) &&
-                            selectedOrder.status !== 'cancelled';
-                          return (
-                            <VStack key={status} spacing={2}>
-                              <Box
-                                w="14px"
-                                h="14px"
-                                borderRadius="full"
-                                bg={
-                                  isActive
-                                    ? `${statusColors[status]}.500`
-                                    : isCompleted
-                                    ? 'green.400'
-                                    : colorMode === 'dark'
-                                    ? 'gray.500'
-                                    : 'gray.300'
-                                }
-                                border="2px solid"
-                                borderColor={
-                                  isActive
-                                    ? `${statusColors[status]}.500`
-                                    : colorMode === 'dark'
-                                    ? 'gray.600'
-                                    : 'gray.300'
-                                }
-                              />
-                              <Text fontSize="xs" textTransform="capitalize">
-                                {status}
-                              </Text>
-                            </VStack>
-                          );
-                        })}
-                      </HStack>
-                    </Box>
-
-                    {getNextStatus(selectedOrder.status) ? (
-                      <Button
-                        colorScheme="purple"
-                        onClick={async () => {
-                          const nextStatus = getNextStatus(selectedOrder.status);
-                          if (!nextStatus) return;
-                          const shouldUpdate = await confirm({
-                            title: 'Update order status',
-                            message: `Mark order as ${nextStatus}?`,
-                            confirmText: `Mark ${nextStatus}`,
-                            cancelText: 'Cancel',
-                          });
-                          if (shouldUpdate) {
-                            handleStatusChange(selectedOrder._id, nextStatus);
-                          }
-                        }}
-                      >
-                        Mark Order {getNextStatus(selectedOrder.status)}
-                      </Button>
-                    ) : (
-                      <Text fontSize="sm" color="gray.500">
-                        This order is {selectedOrder.status}.
-                      </Text>
-                    )}
-                  </Box>
-                </Box>
+                    Mark Complete
+                  </Button>
+                ) : (
+                  <Text fontSize="sm" color="gray.500" textAlign="center">
+                    This order is completed.
+                  </Text>
+                )}
 
                 {/* Notes */}
                 {selectedOrder.notes && (

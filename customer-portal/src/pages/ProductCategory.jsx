@@ -51,19 +51,8 @@ const ProductCategory = () => {
       break;
   }
 
-  const categoryTitles = {
-    flower: '🌿 Flower',
-    disposables: '💨 Disposables',
-    concentrates: '🧪 Concentrates',
-    edibles: '🍬 Edibles',
-  };
-
   return (
     <section className="page">
-      <h2 style={{ textAlign: 'center', marginBottom: 16 }}>
-        {categoryTitles[category] || category}
-      </h2>
-
       {products.length === 0 ? (
         <div className="panel" style={{ marginTop: 16, textAlign: 'center' }}>
           No products available

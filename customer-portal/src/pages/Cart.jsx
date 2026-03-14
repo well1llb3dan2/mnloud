@@ -117,7 +117,7 @@ const Cart = () => {
   return (
     <section className="page" style={{ paddingBottom: 150 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Cart</h2>
+        <span />
         <button className="button secondary" onClick={clearCart}>Clear All</button>
       </div>
 

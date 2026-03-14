@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const orderItemSchema = new mongoose.Schema({
   productType: {
     type: String,
-    enum: ['bulk', 'packaged', 'concentrate', 'edible'],
+    enum: ['flower', 'disposable', 'concentrate', 'edible'],
     required: true,
   },
   productId: {
@@ -54,7 +54,7 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'ready', 'completed', 'cancelled'],
+    enum: ['pending', 'completed'],
     default: 'pending',
   },
   notes: {

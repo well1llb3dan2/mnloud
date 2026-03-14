@@ -44,7 +44,6 @@ const CategoryCard = ({ title, emoji, path, color }) => {
 const Shop = () => {
   return (
     <section className="page">
-      <h2 style={{ textAlign: 'center', marginBottom: 16 }}>Choose a Category</h2>
       <div className="category-grid">
         {categories.map((cat) => (
           <CategoryCard key={cat.path} {...cat} />

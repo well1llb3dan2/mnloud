@@ -61,7 +61,6 @@ const Orders = () => {
 
   return (
     <section className="page">
-      <h2>Order History</h2>
       {orders.length === 0 ? (
         <div className="panel" style={{ marginTop: 16, textAlign: 'center' }}>
           No orders yet

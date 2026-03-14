@@ -54,33 +54,51 @@ a {
 }
 
 .app-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
 
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.92);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  z-index: 100;
+}
+
+.top-bar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.top-bar-install {
+  position: absolute;
+  right: 12px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  border-radius: 8px;
+}
+
 .app-content {
   flex: 1;
-  overflow: auto;
-  padding-bottom: 96px;
+  overflow-y: auto;
+  padding-top: 52px;
+  padding-bottom: 80px;
   position: relative;
 }
 
 .page {
-  padding: 0 0px 0px;
-  height: calc(100svh - clamp(12px, calc(100svw / 5), 98px) - 96px);
-}
-
-.page-header-img {
-  width: 100%;
-  max-width: 480px;
-  display: block;
-  margin: 0 auto 8px;
-  position: fixed;
-  justify-self: center;
-  top: 0;
-  z-index: 5;
-  pointer-events: none;
+  padding: 12px 0 0;
 }
 
 .panel {
@@ -96,6 +114,9 @@ a {
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   padding: 18px 24px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .media-thumb {
@@ -197,7 +218,7 @@ button.button:hover,
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 2px;
-  margin-top: clamp(12px, calc(100vw / 5), 98px);
+  margin-top: 0;
 }
 
 @media (min-width: 640px) {
@@ -245,19 +266,6 @@ button.button:hover,
   z-index: 100;
 }
 
-.install-banner {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 12px;
-  display: flex;
-  justify-content: center;
-  z-index: 110;
-}
-
-.install-banner .button {
-  width: min(360px, 100%);
-}
 
 .install-guide-backdrop {
   position: fixed;
@@ -407,7 +415,7 @@ button.button:hover,
 
 /* Chat (mobile messaging style) */
 .chat-page {
-  height: calc(100svh - 80px);
+  height: calc(100dvh - 52px - 80px);
   display: flex;
   flex-direction: column;
   background: #0f1115;
