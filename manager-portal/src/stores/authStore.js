@@ -64,6 +64,18 @@ export const useAuthStore = create(
       },
 
       checkAuth: async () => {
+        if (import.meta.env.VITE_DISABLE_LOGIN === 'true') {
+          const nickname = import.meta.env.VITE_DEV_NICKNAME || 'Loud Manager';
+          set({
+            user: { nickname, role: 'manager' },
+            accessToken: 'dev-bypass',
+            refreshToken: null,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return;
+        }
+
         const { accessToken } = get();
 
         if (!accessToken) {
