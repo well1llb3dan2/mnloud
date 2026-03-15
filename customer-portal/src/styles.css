@@ -160,6 +160,14 @@ a {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   border-radius: 12px;
+  animation: carousel-nudge 0.8s ease-in-out 0.4s 1;
+}
+
+@keyframes carousel-nudge {
+  0%   { transform: translateX(0); }
+  30%  { transform: translateX(-28px); }
+  60%  { transform: translateX(8px); }
+  100% { transform: translateX(0); }
 }
 
 .carousel::-webkit-scrollbar {
@@ -175,7 +183,7 @@ a {
 
 .carousel-label {
   margin-top: 6px;
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   font-weight: 600;
   opacity: 0.85;
 }

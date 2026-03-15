@@ -482,7 +482,7 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
           </div>
           {carouselItems.length > 1 && (
             <div className="carousel-hint">
-              <span>← swipe to browse →</span>
+              <span>← swipe to select flavor →</span>
             </div>
           )}
           {carouselItems.length > 1 && (
