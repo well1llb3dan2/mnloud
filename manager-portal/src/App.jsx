@@ -95,6 +95,18 @@ function App() {
     );
   }
 
+  // Listen for token refresh messages from the service worker
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.data?.type === 'TOKEN_REFRESHED') {
+        const { setTokens } = useAuthStore.getState();
+        setTokens(event.data.accessToken, event.data.refreshToken);
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handler);
+    return () => navigator.serviceWorker?.removeEventListener('message', handler);
+  }, []);
+
   useEffect(() => {
     const storageKey = 'manager:lastPortalVersion';
     let isMounted = true;

@@ -3,6 +3,33 @@ import { persist } from 'zustand/middleware';
 import { authService } from '../services';
 import { ensureKeypairSynced, ensurePublicKeyRegistered } from '../utils/e2ee';
 
+// Sync tokens to IndexedDB so the service worker can refresh them in the background
+const syncTokensToIDB = async (accessToken, refreshToken) => {
+  try {
+    const db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('manager-auth-sw', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('tokens');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const tx = db.transaction('tokens', 'readwrite');
+    const store = tx.objectStore('tokens');
+    if (accessToken) {
+      store.put(accessToken, 'accessToken');
+    } else {
+      store.delete('accessToken');
+    }
+    if (refreshToken) {
+      store.put(refreshToken, 'refreshToken');
+    } else {
+      store.delete('refreshToken');
+    }
+    db.close();
+  } catch (e) {
+    // IDB not available — no-op
+  }
+};
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -14,6 +41,7 @@ export const useAuthStore = create(
 
       setTokens: (accessToken, refreshToken) => {
         set({ accessToken, refreshToken });
+        syncTokensToIDB(accessToken, refreshToken);
       },
 
       login: async (email, password) => {
@@ -31,6 +59,8 @@ export const useAuthStore = create(
           isAuthenticated: true,
           isLoading: false,
         });
+
+        syncTokensToIDB(data.accessToken, data.refreshToken);
 
         if (data.user?._id) {
           await ensureKeypairSynced({
@@ -61,7 +91,8 @@ export const useAuthStore = create(
           isAuthenticated: false,
           isLoading: false,
         });
-      },
+
+        syncTokensToIDB(null, null);
 
       checkAuth: async () => {
         if (import.meta.env.VITE_DISABLE_LOGIN === 'true') {

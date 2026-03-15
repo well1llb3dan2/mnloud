@@ -20,7 +20,7 @@ export default {
     accessSecret: process.env.JWT_ACCESS_SECRET,
     refreshSecret: process.env.JWT_REFRESH_SECRET,
     accessExpiry: process.env.JWT_ACCESS_EXPIRY || '4h',
-    refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '30d',
+    refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
   },
   
   cors: {
