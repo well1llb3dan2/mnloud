@@ -104,21 +104,22 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
     if (!el) return;
     hasAutoScrolled.current = true;
     el.style.scrollSnapType = 'none';
+    const slideWidth = el.scrollWidth / carouselItems.length;
     let i = 0;
-    const delay = 300;
+    const perSlide = 500;
     const step = () => {
       i++;
       if (i < carouselItems.length) {
-        el.children[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        setTimeout(step, delay);
+        el.scrollTo({ left: slideWidth * i, behavior: 'smooth' });
+        setTimeout(step, perSlide);
       } else {
         setTimeout(() => {
-          el.children[0]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-          setTimeout(() => { el.style.scrollSnapType = 'x mandatory'; }, 400);
-        }, delay);
+          el.scrollTo({ left: 0, behavior: 'smooth' });
+          setTimeout(() => { el.style.scrollSnapType = 'x mandatory'; }, 600);
+        }, perSlide);
       }
     };
-    setTimeout(step, 600);
+    setTimeout(step, 800);
   }, [useCarousel, carouselItems.length]);
 
   const handleCarouselScroll = useCallback(() => {
