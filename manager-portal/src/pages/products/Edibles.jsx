@@ -39,8 +39,10 @@ import { productService } from '../../services';
 import { useOverlayStack } from '../../context';
 import { useConfirmDialog } from '../../components/ConfirmDialog';
 
+const NO_IMAGE_URL = 'https://cdn.mnloud.com/uploads/noimage.png';
+
 const resolveMediaUrl = (mediaUrl, mediaPath) => (
-  mediaUrl || (mediaPath ? `/uploads/${mediaPath.replace('uploads/', '')}` : null)
+  mediaUrl || (mediaPath ? `/uploads/${mediaPath.replace('uploads/', '')}` : NO_IMAGE_URL)
 );
 
 const Edibles = () => {
@@ -493,14 +495,12 @@ const Edibles = () => {
                 <AccordionPanel pb={4}>
                   <HStack justify="space-between" align="start">
                     <HStack spacing={4} align="start">
-                      {product.image && (
-                        <Image
-                          src={resolveMediaUrl(product.imageUrl, product.image)}
-                          boxSize="80px"
-                          objectFit="cover"
-                          borderRadius="md"
-                        />
-                      )}
+                      <Image
+                        src={resolveMediaUrl(product.imageUrl, product.image)}
+                        boxSize="80px"
+                        objectFit="cover"
+                        borderRadius="md"
+                      />
                       <VStack align="start" spacing={1}>
                         <Text fontSize="sm" color="gray.500">
                           Brand: {product.brand || '—'}

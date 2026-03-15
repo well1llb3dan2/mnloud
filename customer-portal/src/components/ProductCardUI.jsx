@@ -3,8 +3,10 @@ import { useCartStore } from '../stores';
 import { useConfirmDialog } from './ConfirmDialog';
 import { useToast } from './ToastProvider';
 
+const NO_IMAGE_URL = 'https://cdn.mnloud.com/uploads/noimage.png';
+
 const getImageUrl = (image) => {
-  if (!image) return '/icons/icon-512x512.png';
+  if (!image) return NO_IMAGE_URL;
   const hostname = window.location.hostname;
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
   const apiBase = (import.meta.env.VITE_API_URL || (isLocalhost ? '' : 'https://api.mnloud.com'))
