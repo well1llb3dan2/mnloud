@@ -426,7 +426,7 @@ const Edibles = () => {
                               <Badge colorScheme={variant.isActive !== false ? 'green' : 'red'}>
                                 {variant.isActive !== false ? 'Active' : 'Inactive'}
                               </Badge>
-                              {variant.image ? <FiCheck color="green" /> : null}
+                              <FiImage size={14} color={variant.image ? '#38A169' : '#A0AEC0'} />
                               <Text>{variant.name}</Text>
                             </HStack>
                             <Switch

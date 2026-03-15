@@ -598,7 +598,7 @@ const Concentrates = () => {
                               <Badge colorScheme={strain.isActive ? 'green' : 'red'}>
                                 {strain.isActive ? 'Active' : 'Inactive'}
                               </Badge>
-                              {strain.image ? <FiCheck color="green" /> : null}
+                              <FiImage size={14} color={strain.image ? '#38A169' : '#A0AEC0'} />
                               <Text>{strain.strain}</Text>
                             </HStack>
                             <Switch
