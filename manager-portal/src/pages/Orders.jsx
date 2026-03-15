@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
-  VStack,
   HStack,
   Text,
   useColorMode,
@@ -12,16 +11,7 @@ import {
   Center,
   Badge,
   Select,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
-  useDisclosure,
   Button,
-  Divider,
 } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import { orderService, productService } from '../services';
@@ -106,9 +96,7 @@ const Orders = () => {
   const { colorMode } = useColorMode();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const { confirm, ConfirmDialog } = useConfirmDialog();
-  const [selectedOrder, setSelectedOrder] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const location = useLocation();
   const [autoOpenId, setAutoOpenId] = useState(null);
@@ -125,13 +113,8 @@ const Orders = () => {
   });
 
   const priceTierMap = useMemo(
-    () => buildPriceTierMap(flowersData || []),
+    () => buildPriceTierMap(flowersData?.products || []),
     [flowersData]
-  );
-
-  const selectedPricing = useMemo(
-    () => selectedOrder ? optimizeFlowerPricing(selectedOrder.items || [], priceTierMap) : null,
-    [selectedOrder, priceTierMap]
   );
 
   const orders = data?.orders || [];
@@ -145,31 +128,32 @@ const Orders = () => {
 
   useEffect(() => {
     if (!autoOpenId || orders.length === 0) return;
-    const target = orders.find((order) => order._id === autoOpenId);
-    if (target) {
-      handleViewOrder(target);
+    const el = document.getElementById(`order-${autoOpenId}`);
+    if (el) {
+      el.open = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setAutoOpenId(null);
     }
   }, [autoOpenId, orders]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, status }) => orderService.updateStatus(id, status),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries(['orders']);
-      if (data?.order) {
-        setSelectedOrder((prev) => (prev?._id === data.order._id ? data.order : prev));
-      }
       toast({ title: 'Order updated', status: 'success' });
     },
   });
 
-  const handleViewOrder = (order) => {
-    setSelectedOrder(order);
-    onOpen();
-  };
-
-  const handleStatusChange = (orderId, newStatus) => {
-    updateMutation.mutate({ id: orderId, status: newStatus });
+  const handleStatusChange = async (orderId, newStatus) => {
+    const shouldUpdate = await confirm({
+      title: 'Complete order',
+      message: 'Mark this order as completed?',
+      confirmText: 'Complete',
+      cancelText: 'Cancel',
+    });
+    if (shouldUpdate) {
+      updateMutation.mutate({ id: orderId, status: newStatus });
+    }
   };
 
   if (isLoading) {
@@ -180,228 +164,169 @@ const Orders = () => {
     );
   }
 
+  const borderColor = colorMode === 'dark' ? '#4A5568' : '#E2E8F0';
+  const surfaceBg = colorMode === 'dark' ? '#2D3748' : '#F7FAFC';
+  const cardBg = colorMode === 'dark' ? '#1A202C' : '#FFFFFF';
+
   return (
     <Box p={4}>
-      <VStack spacing={4} align="stretch">
-        <HStack justify="space-between">
-          <Text fontSize="2xl" fontWeight="bold">
-            Orders
-          </Text>
-          <Select
-            maxW="150px"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            placeholder="All Status"
-          >
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-          </Select>
-        </HStack>
+      <HStack justify="space-between" mb={4}>
+        <Text fontSize="2xl" fontWeight="bold">Orders</Text>
+        <Select
+          maxW="150px"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          placeholder="All Status"
+        >
+          <option value="pending">Pending</option>
+          <option value="completed">Completed</option>
+        </Select>
+      </HStack>
 
-        {orders.length === 0 ? (
-          <Center h="200px">
-            <Text color="gray.500">No orders found</Text>
-          </Center>
-        ) : (
-          orders.map((order) => (
-            <Box
-              key={order._id}
-              bg={colorMode === 'dark' ? 'gray.800' : 'white'}
-              p={4}
-              borderRadius="lg"
-              boxShadow="md"
-              cursor="pointer"
-              onClick={() => handleViewOrder(order)}
-            >
-              <HStack justify="space-between" mb={2}>
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="bold">
-                    {order.customer?.nickname || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() || 'Customer'}
-                  </Text>
-                  <Text fontSize="xs" color="gray.500">
-                    {format(new Date(order.createdAt), 'MMM d, h:mm a')}
-                  </Text>
-                </VStack>
-                <Badge colorScheme={statusColors[order.status]}>
-                  {order.status}
-                </Badge>
-              </HStack>
-              <Text fontSize="sm" color="gray.500">
-                {order.items?.length || 0} items • ${getOrderTotal(order).toFixed(2)}
-              </Text>
-            </Box>
-          ))
-        )}
-      </VStack>
+      {orders.length === 0 ? (
+        <Center h="200px">
+          <Text color="gray.500">No orders found</Text>
+        </Center>
+      ) : (
+        <Box display="grid" gap={3}>
+          {orders.map((order) => {
+            const pricing = optimizeFlowerPricing(order.items || [], priceTierMap);
+            const orderTotal = typeof order.total === 'number' ? order.total : pricing.optimizedTotal;
+            const customerName = order.customer?.nickname
+              || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim()
+              || 'Customer';
 
-      {/* Order Detail Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="full">
-        <ModalOverlay />
-        <ModalContent bg={colorMode === 'dark' ? 'gray.800' : 'white'}>
-          <ModalHeader>
-            Order Details
-            <Badge ml={2} colorScheme={statusColors[selectedOrder?.status]}>
-              {selectedOrder?.status}
-            </Badge>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {selectedOrder && (
-              <VStack align="stretch" spacing={4}>
-                {/* Customer Info */}
-                <Box>
-                  <Text fontWeight="bold" mb={2}>
-                    Customer
-                  </Text>
-                  <Text>
-                    {selectedOrder.customer?.firstName}{' '}
-                    {selectedOrder.customer?.lastName}
-                  </Text>
-                  {selectedOrder.customer?.nickname ? (
-                    <Text fontSize="sm" color="gray.500">
-                      {selectedOrder.customer?.nickname}
-                    </Text>
-                  ) : null}
-                </Box>
+            return (
+              <details
+                key={order._id}
+                id={`order-${order._id}`}
+                style={{
+                  background: cardBg,
+                  borderRadius: 12,
+                  border: `1px solid ${borderColor}`,
+                  overflow: 'hidden',
+                }}
+              >
+                <summary style={{ listStyle: 'none', cursor: 'pointer', padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <strong>{customerName}</strong>
+                      <div style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>
+                        {format(new Date(order.createdAt), 'MMM d, h:mm a')}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <Badge colorScheme={statusColors[order.status]}>{order.status}</Badge>
+                      <div style={{ fontSize: 13, marginTop: 4 }}>
+                        <strong>${orderTotal.toFixed(2)}</strong>
+                        <span style={{ opacity: 0.6, marginLeft: 8, fontSize: 12 }}>
+                          {order.items?.length || 0} items
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </summary>
 
-                <Divider />
-
-                {/* Items */}
-                <Box>
-                  <Text fontWeight="bold" mb={3}>
-                    Items
-                  </Text>
-                  {Object.entries(groupItemsByCategory(selectedOrder.items || [])).map(([category, items]) => (
-                    <Box
+                <div style={{ padding: '0 16px 16px', display: 'grid', gap: 12 }}>
+                  {Object.entries(groupItemsByCategory(order.items)).map(([category, items]) => (
+                    <div
                       key={category}
-                      mb={4}
-                      border="1px solid"
-                      borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
-                      borderRadius="lg"
-                      overflow="hidden"
+                      style={{
+                        border: `1px solid ${borderColor}`,
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                      }}
                     >
-                      <Box
-                        px={3}
-                        py={2}
-                        bg={colorMode === 'dark' ? 'gray.700' : 'gray.50'}
-                        borderBottom="1px solid"
-                        borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+                      <div
+                        style={{
+                          padding: '6px 12px',
+                          background: surfaceBg,
+                          borderBottom: `1px solid ${borderColor}`,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                        }}
                       >
-                        <Text fontSize="sm" fontWeight="bold" textTransform="uppercase" letterSpacing="wide">
-                          {categoryLabels[category] || 'Other'}
-                        </Text>
-                      </Box>
-                      <VStack align="stretch" spacing={0} divider={<Divider borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'} />}>
-                        {items.map((item, idx) => (
-                          <HStack key={`${category}-${idx}`} justify="space-between" px={3} py={3}>
-                            <Text flex={1} fontSize="sm">
-                              <Text as="span" fontWeight="semibold">{item.quantity}x</Text>
-                              {'  '}
-                              {formatItemLine(item)}
-                            </Text>
-                            <Text fontWeight="bold" fontSize="sm" flexShrink={0} ml={3}>
+                        {categoryLabels[category] || 'Other'}
+                      </div>
+                      {items.map((item, idx) => (
+                        <div key={idx}>
+                          {idx > 0 && <div style={{ borderTop: `1px solid ${borderColor}` }} />}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', gap: 8 }}>
+                            <span style={{ fontSize: 13, flex: 1, minWidth: 0 }}>
+                              <strong>{item.quantity}x</strong>{'  '}{formatItemLine(item)}
+                            </span>
+                            <strong style={{ fontSize: 13, flexShrink: 0 }}>
                               ${getItemTotal(item).toFixed(2)}
-                            </Text>
-                          </HStack>
-                        ))}
-                      </VStack>
-                      {category === 'flower' && selectedPricing && selectedPricing.flowerDiscount > 0.01 && (
-                        <HStack
-                          justify="space-between"
-                          px={3}
-                          py={2}
-                          borderTop="1px solid"
-                          borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
-                        >
-                          <Text fontSize="sm" color="green.400">Bulk discount</Text>
-                          <Text fontSize="sm" color="green.400" fontWeight="semibold">
-                            −${selectedPricing.flowerDiscount.toFixed(2)}
-                          </Text>
-                        </HStack>
+                            </strong>
+                          </div>
+                        </div>
+                      ))}
+                      {category === 'flower' && pricing.flowerDiscount > 0.01 && (
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '6px 12px',
+                          borderTop: `1px solid ${borderColor}`,
+                          fontSize: 12,
+                          color: '#48BB78',
+                        }}>
+                          <span>Bulk discount</span>
+                          <span style={{ fontWeight: 600 }}>−${pricing.flowerDiscount.toFixed(2)}</span>
+                        </div>
                       )}
-                      {selectedPricing && selectedPricing.categorySubtotals[category] != null && (
-                        <HStack
-                          justify="space-between"
-                          px={3}
-                          py={2}
-                          borderTop="1px solid"
-                          borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
-                          bg={colorMode === 'dark' ? 'gray.700' : 'gray.50'}
-                        >
-                          <Text fontSize="sm" fontWeight="bold">Subtotal</Text>
-                          <Text fontSize="sm" fontWeight="bold">
-                            ${selectedPricing.categorySubtotals[category].toFixed(2)}
-                          </Text>
-                        </HStack>
+                      {pricing.categorySubtotals[category] != null && (
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          borderTop: `1px solid ${borderColor}`,
+                          background: surfaceBg,
+                          fontSize: 13,
+                          fontWeight: 700,
+                        }}>
+                          <span>Subtotal</span>
+                          <span>${pricing.categorySubtotals[category].toFixed(2)}</span>
+                        </div>
                       )}
-                    </Box>
+                    </div>
                   ))}
-                </Box>
 
-                <Divider />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 16 }}>
+                    <strong>Total</strong>
+                    <strong style={{ color: '#48BB78' }}>${orderTotal.toFixed(2)}</strong>
+                  </div>
 
-                {/* Total */}
-                <HStack justify="space-between">
-                  <Text fontWeight="bold" fontSize="lg">
-                    Total
-                  </Text>
-                  <Text fontWeight="bold" fontSize="lg" color="green.400">
-                    ${(selectedPricing ? selectedPricing.optimizedTotal : getOrderTotal(selectedOrder)).toFixed(2)}
-                  </Text>
-                </HStack>
+                  {order.notes && (
+                    <div style={{
+                      padding: '8px 12px',
+                      background: surfaceBg,
+                      borderRadius: 8,
+                      fontSize: 13,
+                    }}>
+                      <strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Notes</strong>
+                      {order.notes}
+                    </div>
+                  )}
 
-                <Divider />
-
-                {/* Status Update */}
-                {selectedOrder.status === 'pending' ? (
-                  <Button
-                    colorScheme="green"
-                    w="100%"
-                    size="lg"
-                    onClick={async () => {
-                      const shouldUpdate = await confirm({
-                        title: 'Complete order',
-                        message: 'Mark this order as completed?',
-                        confirmText: 'Complete',
-                        cancelText: 'Cancel',
-                      });
-                      if (shouldUpdate) {
-                        handleStatusChange(selectedOrder._id, 'completed');
-                      }
-                    }}
-                    isLoading={updateMutation.isPending}
-                  >
-                    Mark Complete
-                  </Button>
-                ) : (
-                  <Text fontSize="sm" color="gray.500" textAlign="center">
-                    This order is completed.
-                  </Text>
-                )}
-
-                {/* Notes */}
-                {selectedOrder.notes && (
-                  <Box>
-                    <Text fontWeight="bold" mb={2}>
-                      Notes
-                    </Text>
-                    <Text
-                      p={3}
-                      bg={colorMode === 'dark' ? 'gray.700' : 'gray.100'}
-                      borderRadius="md"
+                  {order.status === 'pending' && (
+                    <Button
+                      colorScheme="green"
+                      w="100%"
+                      size="lg"
+                      onClick={() => handleStatusChange(order._id, 'completed')}
+                      isLoading={updateMutation.isPending}
                     >
-                      {selectedOrder.notes}
-                    </Text>
-                  </Box>
-                )}
-              </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={onClose}>Close</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+                      Mark Complete
+                    </Button>
+                  )}
+                </div>
+              </details>
+            );
+          })}
+        </Box>
+      )}
 
       <ConfirmDialog />
     </Box>
