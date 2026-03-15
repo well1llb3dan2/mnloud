@@ -35,6 +35,7 @@ import {
   Wrap,
   WrapItem,
   Divider,
+  Checkbox,
 } from '@chakra-ui/react';
 import { FiPlus, FiEdit2, FiCamera, FiUpload, FiTrash2 } from 'react-icons/fi';
 import { useConfirmDialog } from '../../components/ConfirmDialog';
@@ -44,12 +45,15 @@ import { productService } from '../../services';
 const strainTypeOptions = [
   { value: 'sativa', label: 'Sativa' },
   { value: 'indica', label: 'Indica' },
+  { value: 'hybrid', label: 'Hybrid' },
   { value: 'hybrid-s', label: 'Hybrid (Sativa)' },
   { value: 'hybrid-i', label: 'Hybrid (Indica)' },
 ];
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const defaultFlavor = () => ({ name: '', strainType: 'hybrid-s' });
+const defaultFlavor = (dual) => dual
+  ? ({ name: '', strainType: 'hybrid-s', name2: '', strainType2: 'hybrid-s' })
+  : ({ name: '', strainType: 'hybrid-s' });
 
 const Disposables = () => {
   const navigate = useNavigate();
@@ -75,10 +79,13 @@ const Disposables = () => {
   const [flavorCount, setFlavorCount] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
-  const [flavors, setFlavors] = useState([defaultFlavor()]);
+  const [flavors, setFlavors] = useState([defaultFlavor(false)]);
+  const [isDualChamber, setIsDualChamber] = useState(false);
   const [editFlavors, setEditFlavors] = useState([]);
   const [newFlavorName, setNewFlavorName] = useState('');
   const [newFlavorType, setNewFlavorType] = useState('hybrid-s');
+  const [newFlavorName2, setNewFlavorName2] = useState('');
+  const [newFlavorType2, setNewFlavorType2] = useState('hybrid-s');
   const [isAddFlavorOpen, setIsAddFlavorOpen] = useState(false);
   const { confirm, ConfirmDialog } = useConfirmDialog();
   const { registerBackAction, unregisterBackAction } = useOverlayStack();
@@ -214,11 +221,15 @@ const Disposables = () => {
         _id: strain._id,
         strain: strain.strain || '',
         strainType: strain.strainType || 'hybrid-s',
+        strain2: strain.strain2 || '',
+        strainType2: strain.strainType2 || 'hybrid-s',
         isActive: strain.isActive,
       }))
     );
     setNewFlavorName('');
     setNewFlavorType('hybrid-s');
+    setNewFlavorName2('');
+    setNewFlavorType2('hybrid-s');
     setIsAddFlavorOpen(false);
     setImagePreview(product.imageUrl || null);
     setImageFile(null);
@@ -241,6 +252,7 @@ const Disposables = () => {
     setPrice('');
     setDescription('');
     setFlavors([]);
+    setIsDualChamber(false);
     setImagePreview(null);
     setImageFile(null);
     setVideoPreview(null);
@@ -257,15 +269,28 @@ const Disposables = () => {
     setFlavorCount(safeCount);
     setFlavors((prev) => {
       const next = [...prev];
-      while (next.length < safeCount) next.push(defaultFlavor());
+      while (next.length < safeCount) next.push(defaultFlavor(isDualChamber));
       while (next.length > safeCount) next.pop();
       return next;
     });
   }, [flavorCount]);
 
+  useEffect(() => {
+    setFlavors((prev) =>
+      prev.map((f) => isDualChamber
+        ? { ...f, name2: f.name2 || '', strainType2: f.strainType2 || 'hybrid-s' }
+        : { name: f.name, strainType: f.strainType }
+      )
+    );
+  }, [isDualChamber]);
+
   const flavorIsValid = useMemo(
-    () => flavors.every((flavor) => flavor.name?.trim()),
-    [flavors]
+    () => flavors.every((flavor) => {
+      if (!flavor.name?.trim()) return false;
+      if (isDualChamber && !flavor.name2?.trim()) return false;
+      return true;
+    }),
+    [flavors, isDualChamber]
   );
 
   const stepOneValid = Boolean(price) && Boolean(weight) && Number(flavorCount) > 0;
@@ -286,6 +311,7 @@ const Disposables = () => {
       formData.append('weight', weight);
       formData.append('price', price);
       formData.append('description', description || '');
+      formData.append('isDualChamber', isDualChamber);
       if (imageFile) formData.append('image', imageFile);
       if (videoFile) formData.append('video', videoFile);
 
@@ -295,14 +321,21 @@ const Disposables = () => {
         throw new Error('Failed to create Disposable base.');
       }
 
-      const payloads = flavors.map((flavor, index) => ({
-        baseId: base._id,
-        data: {
-          strain: flavor.name.trim(),
-          strainType: flavor.strainType || 'hybrid-s',
-          sortOrder: index,
-        },
-      }));
+      const payloads = flavors.map((flavor, index) => {
+        const payload = {
+          baseId: base._id,
+          data: {
+            strain: flavor.name.trim(),
+            strainType: flavor.strainType || 'hybrid-s',
+            sortOrder: index,
+          },
+        };
+        if (isDualChamber) {
+          payload.data.strain2 = flavor.name2?.trim() || '';
+          payload.data.strainType2 = flavor.strainType2 || 'hybrid-s';
+        }
+        return payload;
+      });
 
       await Promise.all(payloads.map((payload) => addStrainMutation.mutateAsync(payload)));
 
@@ -350,12 +383,17 @@ const Disposables = () => {
 
       await updateMutation.mutateAsync({ id: editingProduct._id, data: formData });
       await Promise.all(
-        trimmedFlavors.map((flavor) =>
-          updateStrainMutation.mutateAsync({
+        trimmedFlavors.map((flavor) => {
+          const data = { strain: flavor.strain, strainType: flavor.strainType };
+          if (editingProduct.isDualChamber) {
+            data.strain2 = flavor.strain2 || '';
+            data.strainType2 = flavor.strainType2 || 'hybrid-s';
+          }
+          return updateStrainMutation.mutateAsync({
             id: flavor._id,
-            data: { strain: flavor.strain, strainType: flavor.strainType },
-          })
-        )
+            data,
+          });
+        })
       );
       queryClient.invalidateQueries(['Disposables']);
       toast({ title: 'Product updated', status: 'success' });
@@ -374,9 +412,14 @@ const Disposables = () => {
     const trimmed = flavor.strain?.trim();
     if (!trimmed) return;
     try {
+      const data = { strain: trimmed, strainType: flavor.strainType || 'hybrid-s' };
+      if (editingProduct?.isDualChamber) {
+        data.strain2 = flavor.strain2?.trim() || '';
+        data.strainType2 = flavor.strainType2 || 'hybrid-s';
+      }
       await updateStrainMutation.mutateAsync({
         id: flavor._id,
-        data: { strain: trimmed, strainType: flavor.strainType || 'hybrid-s' },
+        data,
       });
       toast({ title: 'Flavor updated', status: 'success' });
     } catch (error) {
@@ -414,23 +457,36 @@ const Disposables = () => {
     const trimmed = newFlavorName.trim();
     if (!trimmed) return;
     try {
+      const strainData = {
+        strain: trimmed,
+        strainType: newFlavorType || 'hybrid-s',
+        sortOrder: editFlavors.length,
+      };
+      if (editingProduct.isDualChamber) {
+        strainData.strain2 = newFlavorName2.trim();
+        strainData.strainType2 = newFlavorType2 || 'hybrid-s';
+      }
       const response = await addStrainMutation.mutateAsync({
         baseId: editingProduct._id,
-        data: {
-          strain: trimmed,
-          strainType: newFlavorType || 'hybrid-s',
-          sortOrder: editFlavors.length,
-        },
+        data: strainData,
       });
       const created = response?.strain;
       if (created?._id) {
         setEditFlavors((prev) => [
           ...prev,
-          { _id: created._id, strain: created.strain, strainType: created.strainType || 'hybrid-s' },
+          {
+            _id: created._id,
+            strain: created.strain,
+            strainType: created.strainType || 'hybrid-s',
+            strain2: created.strain2 || '',
+            strainType2: created.strainType2 || 'hybrid-s',
+          },
         ]);
       }
       setNewFlavorName('');
       setNewFlavorType('hybrid-s');
+      setNewFlavorName2('');
+      setNewFlavorType2('hybrid-s');
       setIsAddFlavorOpen(false);
       toast({ title: 'Flavor added', status: 'success' });
     } catch (error) {
@@ -474,6 +530,9 @@ const Disposables = () => {
                       <Text>
                         {product.brand || 'Disposable'}
                       </Text>
+                      {product.isDualChamber && (
+                        <Badge colorScheme="purple">Dual Chamber</Badge>
+                      )}
                       <Badge colorScheme={product.isActive ? 'green' : 'red'}>
                         {product.isActive ? 'Active' : 'Inactive'}
                       </Badge>
@@ -529,7 +588,9 @@ const Disposables = () => {
                   </HStack>
                   {product.strains?.length ? (
                     <Box mt={3}>
-                      <Text fontWeight="semibold" mb={2}>Flavors</Text>
+                      <Text fontWeight="semibold" mb={2}>
+                        {product.isDualChamber ? 'Variants' : 'Flavors'}
+                      </Text>
                       <VStack align="stretch" spacing={2}>
                         {product.strains.map((strain) => (
                           <HStack key={strain._id} justify="space-between">
@@ -537,7 +598,11 @@ const Disposables = () => {
                               <Badge colorScheme={strain.isActive ? 'green' : 'red'}>
                                 {strain.isActive ? 'Active' : 'Inactive'}
                               </Badge>
-                              <Text>{strain.strain}</Text>
+                              <Text>
+                                {strain.strain2
+                                  ? `${strain.strain} / ${strain.strain2}`
+                                  : strain.strain}
+                              </Text>
                             </HStack>
                             <Switch
                               isChecked={strain.isActive}
@@ -641,6 +706,13 @@ const Disposables = () => {
                     <FormLabel>Brand (optional)</FormLabel>
                     <Input value={brand} onChange={(e) => setBrand(e.target.value)} />
                   </FormControl>
+                  <Checkbox
+                    isChecked={isDualChamber}
+                    onChange={(e) => setIsDualChamber(e.target.checked)}
+                    colorScheme="purple"
+                  >
+                    Dual Chamber
+                  </Checkbox>
                   <FormControl isRequired>
                     <FormLabel>How many flavors?</FormLabel>
                     <Input
@@ -685,10 +757,12 @@ const Disposables = () => {
                   {flavors.map((flavor, index) => (
                     <Box key={`flavor-${index}`} borderWidth="1px" borderRadius="lg" p={4}>
                       <HStack justify="space-between" mb={3}>
-                        <Text fontWeight="semibold">Flavor {index + 1}</Text>
+                        <Text fontWeight="semibold">
+                          {isDualChamber ? `Variant ${index + 1}` : `Flavor ${index + 1}`}
+                        </Text>
                       </HStack>
                       <FormControl isRequired>
-                        <FormLabel>Flavor name</FormLabel>
+                        <FormLabel>{isDualChamber ? 'Chamber 1 flavor' : 'Flavor name'}</FormLabel>
                         <Input
                           value={flavor.name}
                           onChange={(e) => {
@@ -699,7 +773,7 @@ const Disposables = () => {
                         />
                       </FormControl>
                       <FormControl mt={3}>
-                        <FormLabel>Strain type</FormLabel>
+                        <FormLabel>{isDualChamber ? 'Chamber 1 strain type' : 'Strain type'}</FormLabel>
                         <Select
                           value={flavor.strainType}
                           onChange={(e) => {
@@ -715,6 +789,39 @@ const Disposables = () => {
                           ))}
                         </Select>
                       </FormControl>
+                      {isDualChamber && (
+                        <>
+                          <Divider my={3} />
+                          <FormControl isRequired>
+                            <FormLabel>Chamber 2 flavor</FormLabel>
+                            <Input
+                              value={flavor.name2 || ''}
+                              onChange={(e) => {
+                                const next = [...flavors];
+                                next[index] = { ...next[index], name2: e.target.value };
+                                setFlavors(next);
+                              }}
+                            />
+                          </FormControl>
+                          <FormControl mt={3}>
+                            <FormLabel>Chamber 2 strain type</FormLabel>
+                            <Select
+                              value={flavor.strainType2 || 'hybrid-s'}
+                              onChange={(e) => {
+                                const next = [...flavors];
+                                next[index] = { ...next[index], strainType2: e.target.value };
+                                setFlavors(next);
+                              }}
+                            >
+                              {strainTypeOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </>
+                      )}
                     </Box>
                   ))}
                 </VStack>
@@ -750,12 +857,17 @@ const Disposables = () => {
                         </Text>
                       ) : null}
                       <Divider />
-                      <Text fontWeight="semibold">Flavors</Text>
+                      {isDualChamber && (
+                        <Badge colorScheme="purple" mb={1}>Dual Chamber</Badge>
+                      )}
+                      <Text fontWeight="semibold">{isDualChamber ? 'Variants' : 'Flavors'}</Text>
                       <Wrap>
                         {flavors.map((flavor, index) => (
                           <WrapItem key={`preview-flavor-${index}`}>
                             <Badge variant="outline">
-                              {flavor.name || `Flavor ${index + 1}`}
+                              {isDualChamber
+                                ? `${flavor.name || '?'} / ${flavor.name2 || '?'}`
+                                : (flavor.name || `Flavor ${index + 1}`)}
                             </Badge>
                           </WrapItem>
                         ))}
@@ -900,7 +1012,9 @@ const Disposables = () => {
                 </FormControl>
                 <Divider />
                 <VStack spacing={3} align="stretch">
-                  <Text fontWeight="semibold">Flavors</Text>
+                  <Text fontWeight="semibold">
+                    {editingProduct?.isDualChamber ? 'Variants' : 'Flavors'}
+                  </Text>
                   {editFlavors.length === 0 ? (
                     <Text color="gray.500">No flavors yet</Text>
                   ) : (
@@ -913,10 +1027,14 @@ const Disposables = () => {
                                 <Badge colorScheme={flavor.isActive ? 'green' : 'red'}>
                                   {flavor.isActive ? 'Active' : 'Inactive'}
                                 </Badge>
-                                <Text fontSize="sm" color="gray.500">Flavor</Text>
+                                <Text fontSize="sm" color="gray.500">
+                                  {editingProduct?.isDualChamber ? 'Variant' : 'Flavor'}
+                                </Text>
                               </HStack>
                               <FormControl isRequired>
-                                <FormLabel>Flavor name</FormLabel>
+                                <FormLabel>
+                                  {editingProduct?.isDualChamber ? 'Chamber 1 flavor' : 'Flavor name'}
+                                </FormLabel>
                                 <Input
                                   value={flavor.strain}
                                   onChange={(e) => {
@@ -927,7 +1045,9 @@ const Disposables = () => {
                                 />
                               </FormControl>
                               <FormControl>
-                                <FormLabel>Strain type</FormLabel>
+                                <FormLabel>
+                                  {editingProduct?.isDualChamber ? 'Chamber 1 strain type' : 'Strain type'}
+                                </FormLabel>
                                 <Select
                                   value={flavor.strainType}
                                   onChange={(e) => {
@@ -943,6 +1063,39 @@ const Disposables = () => {
                                   ))}
                                 </Select>
                               </FormControl>
+                              {editingProduct?.isDualChamber && (
+                                <>
+                                  <Divider />
+                                  <FormControl isRequired>
+                                    <FormLabel>Chamber 2 flavor</FormLabel>
+                                    <Input
+                                      value={flavor.strain2 || ''}
+                                      onChange={(e) => {
+                                        const next = [...editFlavors];
+                                        next[index] = { ...next[index], strain2: e.target.value };
+                                        setEditFlavors(next);
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormControl>
+                                    <FormLabel>Chamber 2 strain type</FormLabel>
+                                    <Select
+                                      value={flavor.strainType2 || 'hybrid-s'}
+                                      onChange={(e) => {
+                                        const next = [...editFlavors];
+                                        next[index] = { ...next[index], strainType2: e.target.value };
+                                        setEditFlavors(next);
+                                      }}
+                                    >
+                                      {strainTypeOptions.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                          {option.label}
+                                        </option>
+                                      ))}
+                                    </Select>
+                                  </FormControl>
+                                </>
+                              )}
                             </VStack>
                             <IconButton
                               icon={<FiTrash2 />}
@@ -972,20 +1125,24 @@ const Disposables = () => {
                     variant="outline"
                     onClick={() => setIsAddFlavorOpen(true)}
                   >
-                    Add Flavor
+                    {editingProduct?.isDualChamber ? 'Add Variant' : 'Add Flavor'}
                   </Button>
                   {isAddFlavorOpen ? (
                     <Box borderWidth="1px" borderRadius="lg" p={3}>
                       <VStack spacing={3} align="stretch">
                         <FormControl isRequired>
-                          <FormLabel>Flavor name</FormLabel>
+                          <FormLabel>
+                            {editingProduct?.isDualChamber ? 'Chamber 1 flavor' : 'Flavor name'}
+                          </FormLabel>
                           <Input
                             value={newFlavorName}
                             onChange={(e) => setNewFlavorName(e.target.value)}
                           />
                         </FormControl>
                         <FormControl>
-                          <FormLabel>Strain type</FormLabel>
+                          <FormLabel>
+                            {editingProduct?.isDualChamber ? 'Chamber 1 strain type' : 'Strain type'}
+                          </FormLabel>
                           <Select
                             value={newFlavorType}
                             onChange={(e) => setNewFlavorType(e.target.value)}
@@ -997,6 +1154,31 @@ const Disposables = () => {
                             ))}
                           </Select>
                         </FormControl>
+                        {editingProduct?.isDualChamber && (
+                          <>
+                            <Divider />
+                            <FormControl isRequired>
+                              <FormLabel>Chamber 2 flavor</FormLabel>
+                              <Input
+                                value={newFlavorName2}
+                                onChange={(e) => setNewFlavorName2(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormControl>
+                              <FormLabel>Chamber 2 strain type</FormLabel>
+                              <Select
+                                value={newFlavorType2}
+                                onChange={(e) => setNewFlavorType2(e.target.value)}
+                              >
+                                {strainTypeOptions.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </>
+                        )}
                         <HStack justify="flex-end">
                           <Button
                             size="sm"
@@ -1005,6 +1187,8 @@ const Disposables = () => {
                               setIsAddFlavorOpen(false);
                               setNewFlavorName('');
                               setNewFlavorType('hybrid-s');
+                              setNewFlavorName2('');
+                              setNewFlavorType2('hybrid-s');
                             }}
                           >
                             Cancel
@@ -1015,7 +1199,7 @@ const Disposables = () => {
                             onClick={handleAddFlavor}
                             isLoading={addStrainMutation.isPending}
                           >
-                            Add Flavor
+                            {editingProduct?.isDualChamber ? 'Add Variant' : 'Add Flavor'}
                           </Button>
                         </HStack>
                       </VStack>

@@ -1,62 +1,109 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { cartService } from '../services';
 
 export const useCartStore = create(
-  persist(
-    (set, get) => ({
-      items: [],
-      
-      addItem: (item) => {
-        const { items } = get();
-        const existingIndex = items.findIndex(
-          (i) => 
-            i.productId === item.productId && 
-            i.productType === item.productType &&
-            i.weight === item.weight &&
-            i.strain === item.strain
-        );
+  (set, get) => ({
+    items: [],
+    isLoading: false,
+    hasFetched: false,
 
-        if (existingIndex >= 0) {
-          const newItems = [...items];
-          newItems[existingIndex].quantity += item.quantity || 1;
-          set({ items: newItems });
-        } else {
-          set({ items: [...items, { ...item, quantity: item.quantity || 1 }] });
-        }
-      },
+    setItems: (items) => set({ items }),
 
-      removeItem: (index) => {
-        const { items } = get();
-        set({ items: items.filter((_, i) => i !== index) });
-      },
+    fetchCart: async () => {
+      if (get().isLoading) return;
+      set({ isLoading: true });
+      try {
+        const data = await cartService.getCart();
+        set({ items: data.items || [], hasFetched: true });
+      } catch (error) {
+        console.error('Fetch cart error:', error);
+      } finally {
+        set({ isLoading: false });
+      }
+    },
 
-      updateQuantity: (index, quantity) => {
-        const { items } = get();
-        if (quantity < 1) {
-          set({ items: items.filter((_, i) => i !== index) });
-        } else {
-          const newItems = [...items];
-          newItems[index].quantity = quantity;
-          set({ items: newItems });
-        }
-      },
+    addItem: async (item) => {
+      try {
+        const data = await cartService.addItem(item);
+        set({ items: data.items || [] });
+        return { success: true };
+      } catch (error) {
+        const msg = error?.response?.data?.message || 'Failed to add item';
+        const reason = error?.response?.data?.reason;
+        return { success: false, message: msg, reason };
+      }
+    },
 
-      clearCart: () => {
+    removeItem: async (index) => {
+      try {
+        const data = await cartService.removeItem(index);
+        set({ items: data.items || [] });
+      } catch (error) {
+        console.error('Remove item error:', error);
+      }
+    },
+
+    updateQuantity: async (index, quantity) => {
+      try {
+        const data = await cartService.updateItem(index, quantity);
+        set({ items: data.items || [] });
+      } catch (error) {
+        console.error('Update quantity error:', error);
+      }
+    },
+
+    clearCart: async () => {
+      try {
+        await cartService.clearCart();
         set({ items: [] });
-      },
+      } catch (error) {
+        console.error('Clear cart error:', error);
+      }
+    },
 
-      getTotal: () => {
-        const { items } = get();
-        return items.reduce((total, item) => total + (parseFloat(item.priceEach) || 0) * item.quantity, 0);
-      },
+    validateCart: async () => {
+      try {
+        const data = await cartService.validateCart();
+        set({ items: data.items || [] });
+        return data.unavailableItems || [];
+      } catch (error) {
+        console.error('Validate cart error:', error);
+        return [];
+      }
+    },
 
-      getItemCount: () => {
-        const { items } = get();
-        return items.reduce((count, item) => count + item.quantity, 0);
-      },
-    }),
-    {
-      name: 'customer-cart',
-    }
-  )
+    markUnavailable: (productId, strainId, variantId) => {
+      const { items } = get();
+      const updated = items.map((item) => {
+        const matchProduct = item.productId === productId;
+        const matchStrain = strainId ? (item.strainId === strainId) : true;
+        const matchVariant = variantId ? (item.variantId === variantId) : true;
+        if (matchProduct && matchStrain && matchVariant) {
+          return { ...item, unavailable: true };
+        }
+        return item;
+      });
+      set({ items: updated });
+    },
+
+    markProductUnavailable: (productId) => {
+      const { items } = get();
+      const updated = items.map((item) =>
+        item.productId === productId ? { ...item, unavailable: true } : item
+      );
+      set({ items: updated });
+    },
+
+    getTotal: () => {
+      const { items } = get();
+      return items
+        .filter((item) => !item.unavailable)
+        .reduce((total, item) => total + (parseFloat(item.priceEach) || 0) * item.quantity, 0);
+    },
+
+    getItemCount: () => {
+      const { items } = get();
+      return items.reduce((count, item) => count + item.quantity, 0);
+    },
+  })
 );

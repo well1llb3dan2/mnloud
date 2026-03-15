@@ -712,6 +712,11 @@ export const createDisposableBase = async (req, res) => {
       data.lastActivatedAt = new Date();
     }
 
+    const parsedDualChamber = parseBooleanField(data.isDualChamber);
+    if (parsedDualChamber !== undefined) {
+      data.isDualChamber = parsedDualChamber;
+    }
+
     if (!data.name && data.brand) {
       data.name = data.brand;
     }
@@ -1212,6 +1217,8 @@ export const updateEdibleVariant = async (req, res) => {
       variant.name = trimmed;
     }
 
+    const wasActive = variant.isActive;
+
     const parsedIsActive = parseBooleanField(isActive);
     if (parsedIsActive !== undefined) {
       variant.isActive = parsedIsActive;
@@ -1225,6 +1232,17 @@ export const updateEdibleVariant = async (req, res) => {
     }
 
     await edible.save();
+
+    if (parsedIsActive !== undefined && wasActive !== variant.isActive) {
+      emitToRoom('customers', 'products:updated', {
+        productType: 'edible',
+        id: variant._id,
+        name: variant.name || 'Edible variant',
+        isActive: variant.isActive,
+        action: variant.isActive ? 'activated' : 'deactivated',
+      });
+    }
+
     res.json({ product: edible, variant });
   } catch (error) {
     console.error('Update edible variant error:', error);

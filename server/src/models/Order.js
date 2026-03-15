@@ -17,7 +17,11 @@ const orderItemSchema = new mongoose.Schema({
   brand: String,
   strain: String,
   strainType: String,
+  strain2: String,
+  strainType2: String,
+  variant: String,
   weight: String,
+  priceTierId: mongoose.Schema.Types.ObjectId,
   quantity: {
     type: Number,
     required: true,

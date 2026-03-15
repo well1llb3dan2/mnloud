@@ -41,7 +41,7 @@ const flowerSchema = new mongoose.Schema({
   },
   strainType: {
     type: String,
-    enum: ['sativa', 'indica', 'hybrid-s', 'hybrid-i'],
+    enum: ['sativa', 'indica', 'hybrid', 'hybrid-s', 'hybrid-i'],
   },
   thcPercentage: {
     type: Number,
@@ -130,7 +130,7 @@ const concentrateStrainSchema = new mongoose.Schema({
   },
   strainType: {
     type: String,
-    enum: ['sativa', 'indica', 'hybrid-s', 'hybrid-i'],
+    enum: ['sativa', 'indica', 'hybrid', 'hybrid-s', 'hybrid-i'],
     required: true,
   },
   thcPercentage: {
@@ -171,6 +171,10 @@ const disposableBaseSchema = new mongoose.Schema({
     required: true,
     min: 0,
   },
+  isDualChamber: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
 });
@@ -189,8 +193,16 @@ const disposableStrainSchema = new mongoose.Schema({
   },
   strainType: {
     type: String,
-    enum: ['sativa', 'indica', 'hybrid-s', 'hybrid-i'],
+    enum: ['sativa', 'indica', 'hybrid', 'hybrid-s', 'hybrid-i'],
     required: true,
+  },
+  strain2: {
+    type: String,
+    trim: true,
+  },
+  strainType2: {
+    type: String,
+    enum: ['sativa', 'indica', 'hybrid', 'hybrid-s', 'hybrid-i'],
   },
   thcPercentage: {
     type: Number,

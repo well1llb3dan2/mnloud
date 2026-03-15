@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../components/ToastProvider';
 import { useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
+import { useCartStore } from '../stores/cartStore';
 import { authService, pushService } from '../services';
 import { decryptMessage, encryptForRecipients } from '../utils/e2ee';
 
@@ -156,6 +157,11 @@ export const SocketProvider = ({ children }) => {
       const label = name || 'Product';
       queryClient.invalidateQueries({ queryKey: ['products'] });
 
+      if (action === 'deactivated' || action === 'deleted') {
+        // Re-validate cart items when products become unavailable
+        useCartStore.getState().validateCart();
+      }
+
       if (action === 'activated') {
         toast({
           title: 'Product available',
@@ -235,6 +241,19 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on('order:status', ({ orderId, status }) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    newSocket.on('order:validation-failed', ({ unavailableItems, message: msg }) => {
+      // Re-fetch cart to get updated unavailable flags
+      useCartStore.getState().fetchCart();
+      toast({
+        title: 'Order could not be placed',
+        description: msg || 'Some items are no longer available.',
+        status: 'error',
+        duration: 6000,
+        isClosable: true,
+        position: 'top',
+      });
     });
 
     newSocket.on('error', ({ message }) => {

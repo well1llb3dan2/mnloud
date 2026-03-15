@@ -6,6 +6,7 @@ import chatRoutes from './chat.js';
 import orderRoutes from './orders.js';
 import strainsRoutes from './strains.js';
 import pushRoutes from './push.js';
+import cartRoutes from './cart.js';
 
 export {
   authRoutes,
@@ -16,4 +17,5 @@ export {
   orderRoutes,
   strainsRoutes,
   pushRoutes,
+  cartRoutes,
 };

@@ -155,7 +155,9 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
 
     const summaryParts = [displayName || 'Item'];
     if (type === 'flower' && weight) summaryParts.push(weight);
-    if ((type === 'concentrate' || type === 'disposable') && strain?.strain) summaryParts.push(strain.strain);
+    if ((type === 'concentrate' || type === 'disposable') && strain?.strain) {
+      summaryParts.push(strain.strain2 ? `${strain.strain} / ${strain.strain2}` : strain.strain);
+    }
     if (quantity > 1) summaryParts.push(`Qty ${quantity}`);
 
     const confirmed = await confirm({
@@ -178,18 +180,39 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
     if (type === 'flower') {
       itemData.weight = weight;
       itemData.strain = product.strain;
+      itemData.strainType = product.strainType;
+      itemData.priceTierId = product.priceTier?._id;
       itemData.priceEach = parseFloat(price) || 0;
     } else if ((type === 'concentrate' || type === 'disposable') && strain) {
+      itemData.brand = product.brand;
       itemData.strain = strain.strain;
+      itemData.strainId = strain._id;
       itemData.strainType = strain.strainType;
+      if (strain.strain2) {
+        itemData.strain2 = strain.strain2;
+        itemData.strainType2 = strain.strainType2;
+      }
     } else if (type === 'edible' && strain) {
+      itemData.brand = product.brand;
       itemData.variant = strain.name;
+      itemData.variantId = strain._id;
     } else {
       itemData.strain = product.strain;
       itemData.weight = product.weight;
     }
 
-    addItem(itemData);
+    const result = await addItem(itemData);
+    if (result?.success === false) {
+      toast({
+        title: 'Cannot add to cart',
+        description: result.message || 'This item is currently unavailable.',
+        status: 'error',
+        duration: 4000,
+        position: 'top',
+        isClosable: true,
+      });
+      return;
+    }
     toast({
       title: `${displayName || strainName || 'Product'} added to cart!`,
       status: 'success',
@@ -279,7 +302,9 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
           >
             {activeStrains.map((strain) => (
               <option key={strain._id} value={strain._id}>
-                {strain.strain}
+                {strain.strain2
+                  ? `${strain.strain} / ${strain.strain2}`
+                  : strain.strain}
               </option>
             ))}
           </select>
@@ -379,7 +404,9 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                 {activeStrains.map((strain) => (
                   <span key={strain._id} className="panel" style={{ padding: '6px 10px' }}>
-                    {strain.strain}
+                    {strain.strain2
+                      ? `${strain.strain} / ${strain.strain2}`
+                      : strain.strain}
                   </span>
                 ))}
               </div>

@@ -17,3 +17,4 @@ export { default as PushSubscription } from './PushSubscription.js';
 export { default as ConcentrateType } from './ConcentrateType.js';
 
 export { default as EdibleType } from './EdibleType.js';
+export { default as Cart } from './Cart.js';

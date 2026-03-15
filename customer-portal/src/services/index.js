@@ -173,3 +173,40 @@ export const pushService = {
     return response.data;
   },
 };
+
+export const cartService = {
+  getCart: async () => {
+    const response = await api.get('/cart');
+    return response.data;
+  },
+
+  addItem: async (item) => {
+    const response = await api.post('/cart/items', item);
+    return response.data;
+  },
+
+  updateItem: async (index, quantity) => {
+    const response = await api.patch(`/cart/items/${index}`, { quantity });
+    return response.data;
+  },
+
+  removeItem: async (index) => {
+    const response = await api.delete(`/cart/items/${index}`);
+    return response.data;
+  },
+
+  clearCart: async () => {
+    const response = await api.delete('/cart');
+    return response.data;
+  },
+
+  syncCart: async (items) => {
+    const response = await api.put('/cart', { items });
+    return response.data;
+  },
+
+  validateCart: async () => {
+    const response = await api.post('/cart/validate');
+    return response.data;
+  },
+};

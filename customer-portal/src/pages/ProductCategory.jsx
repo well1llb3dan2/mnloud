@@ -39,13 +39,19 @@ const ProductCategory = () => {
       products = flowers.map((p) => ({ ...p, _type: 'flower' }));
       break;
     case 'disposables':
-      products = disposables.map((p) => ({ ...p, _type: 'disposable' }));
+      products = disposables
+        .filter((p) => p.strains && p.strains.length > 0)
+        .map((p) => ({ ...p, _type: 'disposable' }));
       break;
     case 'concentrates':
-      products = concentrates.map((p) => ({ ...p, _type: 'concentrate' }));
+      products = concentrates
+        .filter((p) => p.strains && p.strains.length > 0)
+        .map((p) => ({ ...p, _type: 'concentrate' }));
       break;
     case 'edibles':
-      products = edibles.map((p) => ({ ...p, _type: 'edible' }));
+      products = edibles
+        .filter((p) => p.variants?.some((v) => v.isActive !== false))
+        .map((p) => ({ ...p, _type: 'edible' }));
       break;
     default:
       break;

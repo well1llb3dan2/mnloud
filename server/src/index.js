@@ -21,6 +21,7 @@ import {
   orderRoutes,
   strainsRoutes,
   pushRoutes,
+  cartRoutes,
 } from './routes/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -178,6 +179,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/strains', strainsRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

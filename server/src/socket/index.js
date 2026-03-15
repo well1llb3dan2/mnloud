@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
-import { User, Message, Conversation, Order } from '../models/index.js';
+import { User, Message, Conversation, Order, Cart } from '../models/index.js';
 import { sendPushToRole, sendPushToUser } from '../services/pushService.js';
+import { validateCartItem } from '../controllers/cartController.js';
 import config from '../config/index.js';
 import { getServerVersion } from './bus.js';
 
@@ -161,8 +162,58 @@ export const initializeSocket = (io) => {
         
         await conversation.save();
         
-        // If it's an order, create order record
+        // If it's an order, validate and create order record
         if (messageType === 'order' && orderData) {
+          // Validate each order item before creating
+          const unavailableItems = [];
+          for (let i = 0; i < orderData.items.length; i++) {
+            const item = orderData.items[i];
+            const validation = await validateCartItem(item);
+            if (validation.unavailable) {
+              unavailableItems.push({
+                index: i,
+                productName: item.productName,
+                strain: item.strain,
+                variant: item.variant,
+                reason: validation.reason,
+              });
+            }
+          }
+
+          if (unavailableItems.length > 0) {
+            // Update cart to mark unavailable items
+            const cart = await Cart.findOne({ customer: conversation.customer });
+            if (cart) {
+              for (const unavail of unavailableItems) {
+                const cartItem = cart.items.find(
+                  (ci) =>
+                    ci.productId?.toString() === orderData.items[unavail.index].productId &&
+                    (ci.strain || '') === (orderData.items[unavail.index].strain || '') &&
+                    (ci.variant || '') === (orderData.items[unavail.index].variant || '')
+                );
+                if (cartItem) {
+                  cartItem.unavailable = true;
+                }
+              }
+              await cart.save();
+            }
+
+            // Delete the message since the order failed validation
+            await message.deleteOne();
+            conversation.lastMessage = null;
+            conversation.lastMessageAt = null;
+            if (user.role === 'customer') {
+              conversation.unreadCount = Math.max(0, conversation.unreadCount - 1);
+            }
+            await conversation.save();
+
+            socket.emit('order:validation-failed', {
+              unavailableItems,
+              message: 'Some items in your order are no longer available.',
+            });
+            return;
+          }
+
           const order = new Order({
             customer: conversation.customer,
             items: orderData.items,
@@ -171,6 +222,12 @@ export const initializeSocket = (io) => {
             messageId: message._id,
           });
           await order.save();
+
+          // Clear cart after successful order
+          await Cart.findOneAndUpdate(
+            { customer: conversation.customer },
+            { items: [] }
+          );
         }
         
         // Populate sender info

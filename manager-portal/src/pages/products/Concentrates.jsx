@@ -44,6 +44,7 @@ import { productService } from '../../services';
 const strainTypeOptions = [
   { value: 'sativa', label: 'Sativa' },
   { value: 'indica', label: 'Indica' },
+  { value: 'hybrid', label: 'Hybrid' },
   { value: 'hybrid-s', label: 'Hybrid (Sativa)' },
   { value: 'hybrid-i', label: 'Hybrid (Indica)' },
 ];
