@@ -717,8 +717,8 @@ export const createDisposableBase = async (req, res) => {
       data.isDualChamber = parsedDualChamber;
     }
 
-    if (!data.name && data.brand) {
-      data.name = data.brand;
+    if (!data.name) {
+      data.name = data.brand?.trim() || undefined;
     }
     
     const imageFile = req.files?.image?.[0] || req.file;
@@ -729,6 +729,10 @@ export const createDisposableBase = async (req, res) => {
     if (videoFile) {
       const mutedVideo = await stripAudio(videoFile);
       data.video = await storeUpload(mutedVideo, { role: 'manager' });
+    }
+    
+    if (!data.name) {
+      return res.status(400).json({ message: 'Brand name is required' });
     }
     
     const base = new DisposableBase(data);
@@ -747,8 +751,8 @@ export const updateDisposableBase = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    if (!data.name && data.brand) {
-      data.name = data.brand;
+    if (!data.name && data.brand?.trim()) {
+      data.name = data.brand.trim();
     }
     
     const base = await DisposableBase.findById(id);

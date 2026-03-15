@@ -248,7 +248,7 @@ const Disposables = () => {
     [flavors, isDualChamber]
   );
 
-  const stepOneValid = Boolean(price) && Boolean(weight) && Number(flavorCount) > 0;
+  const stepOneValid = Boolean(brand?.trim()) && Boolean(price) && Boolean(weight) && Number(flavorCount) > 0;
   const stepTwoValid = flavorIsValid;
 
   const handleCreate = async () => {
