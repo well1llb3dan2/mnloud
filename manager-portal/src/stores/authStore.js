@@ -93,6 +93,7 @@ export const useAuthStore = create(
         });
 
         syncTokensToIDB(null, null);
+      },
 
       checkAuth: async () => {
         if (import.meta.env.VITE_DISABLE_LOGIN === 'true') {
