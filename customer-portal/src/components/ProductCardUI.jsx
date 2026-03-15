@@ -257,6 +257,160 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
     });
   };
 
+  // ── Flower-specific card ──
+  if (type === 'flower') {
+    const thc = product.thc_percent ?? product.thcPercentage;
+    return (
+      <div className="card">
+        <img
+          src={imageUrl}
+          alt={strainName}
+          style={{ width: '100%', borderRadius: 12, objectFit: 'cover', aspectRatio: '1 / 1', display: 'block', margin: '0 auto' }}
+        />
+
+        <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+          {/* Strain type | Strain | THC% */}
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6 }}>
+            {product.strainType && (
+              <span style={{ fontSize: 11, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                {strainTypeLabel(product.strainType)}
+              </span>
+            )}
+            <strong style={{ fontSize: 15, textAlign: 'center' }}>{strainName}</strong>
+            {thc != null && (
+              <span style={{ fontSize: 11, opacity: 0.65, flexShrink: 0 }}>
+                {thc}%
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="button secondary"
+            style={{ padding: '6px 0', fontSize: 12 }}
+            onClick={() => setDetailsOpen(true)}
+          >
+            Details
+          </button>
+
+          <select
+            className="select"
+            value={activeTier?.quantity ?? ''}
+            onChange={(e) => {
+              const quantity = Number(e.target.value);
+              const nextTier = prices.find((pricePoint) => pricePoint.quantity === quantity) || null;
+              setSelectedBulkTier(nextTier);
+            }}
+          >
+            {prices.map((pricePoint) => (
+              <option key={pricePoint.quantity} value={pricePoint.quantity}>
+                {pricePoint.quantity}g — ${pricePoint.price}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              if (!activeTier) return;
+              handleAddToCart(`${activeTier.quantity}g`, activeTier.price, null, 1);
+            }}
+          >
+            Add to Cart
+          </button>
+        </div>
+
+        {/* Flower details modal — no image */}
+        <Modal open={detailsOpen} onClose={() => setDetailsOpen(false)}>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong style={{ fontSize: 16 }}>{strainName}</strong>
+              <button className="button secondary" type="button" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => setDetailsOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            {/* Quick stats row */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {product.strainType && (
+                <span className="panel" style={{ padding: '4px 10px', fontSize: 12 }}>
+                  {strainTypeLabel(product.strainType)}
+                </span>
+              )}
+              {thc != null && (
+                <span className="panel" style={{ padding: '4px 10px', fontSize: 12 }}>
+                  THC {thc}%
+                </span>
+              )}
+            </div>
+
+            {/* Info sections — compact two-column where it fits */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {product.effects?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.5, marginBottom: 4 }}>Effects</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {product.effects.map((e) => (
+                      <span key={e} style={{ fontSize: 12, background: 'rgba(124,58,237,0.15)', borderRadius: 6, padding: '2px 8px' }}>{e}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {product.flavors?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.5, marginBottom: 4 }}>Flavors</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {product.flavors.map((f) => (
+                      <span key={f} style={{ fontSize: 12, background: 'rgba(6,182,212,0.15)', borderRadius: 6, padding: '2px 8px' }}>{f}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {product.may_relieve?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.5, marginBottom: 4 }}>May Relieve</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {product.may_relieve.map((m) => (
+                      <span key={m} style={{ fontSize: 12, background: 'rgba(34,197,94,0.15)', borderRadius: 6, padding: '2px 8px' }}>{m}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {product.terpenes?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.5, marginBottom: 4 }}>Terpenes</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {product.terpenes.map((t) => (
+                      <span key={t} style={{ fontSize: 12, background: 'rgba(251,191,36,0.15)', borderRadius: 6, padding: '2px 8px' }}>{t}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {product.lineage && (
+              <div>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.5, marginBottom: 4 }}>Lineage</div>
+                <div style={{ fontSize: 13 }}>{product.lineage}</div>
+              </div>
+            )}
+
+            {product.description && (
+              <div>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.5, marginBottom: 4 }}>Description</div>
+                <div style={{ fontSize: 13, lineHeight: 1.5 }}>{product.description}</div>
+              </div>
+            )}
+          </div>
+        </Modal>
+
+        <ConfirmDialog />
+      </div>
+    );
+  }
+
+  // ── Non-flower card (concentrate, disposable, edible) ──
   return (
     <div className="card">
       <div style={{ cursor: 'pointer' }} onClick={() => setDetailsOpen(true)}>
@@ -311,24 +465,6 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
         {product.weight ? <div>Weight: {product.weight}</div> : null}
         {product.price ? <div>${product.price}</div> : null}
 
-        {type === 'flower' && (
-          <select
-            className="select"
-            value={activeTier?.quantity ?? ''}
-            onChange={(e) => {
-              const quantity = Number(e.target.value);
-              const nextTier = prices.find((pricePoint) => pricePoint.quantity === quantity) || null;
-              setSelectedBulkTier(nextTier);
-            }}
-          >
-            {prices.map((pricePoint) => (
-              <option key={pricePoint.quantity} value={pricePoint.quantity}>
-                {pricePoint.quantity}g - ${pricePoint.price}
-              </option>
-            ))}
-          </select>
-        )}
-
         {(type === 'concentrate' || type === 'disposable') && activeStrains.length > 0 && (
           <select
             className="select"
@@ -359,30 +495,22 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
           </select>
         )}
 
-        {type !== 'flower' && (
-          <select
-            className="select"
-            value={selectedQuantity}
-            onChange={(e) => setSelectedQuantity(Number(e.target.value))}
-          >
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((qty) => (
-              <option key={qty} value={qty}>
-                Qty: {qty}
-              </option>
-            ))}
-          </select>
-        )}
+        <select
+          className="select"
+          value={selectedQuantity}
+          onChange={(e) => setSelectedQuantity(Number(e.target.value))}
+        >
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((qty) => (
+            <option key={qty} value={qty}>
+              Qty: {qty}
+            </option>
+          ))}
+        </select>
 
         <button
           type="button"
           className="button"
           onClick={() => {
-            if (type === 'flower') {
-              if (!activeTier) return;
-              handleAddToCart(`${activeTier.quantity}g`, activeTier.price, null, 1);
-              return;
-            }
-
             if (type === 'concentrate' || type === 'disposable') {
               handleAddToCart(null, product.price, selectedStrain, selectedQuantity);
               return;

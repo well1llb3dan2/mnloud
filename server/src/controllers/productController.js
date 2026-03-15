@@ -170,7 +170,7 @@ export const createFlower = async (req, res) => {
     }
 
     if (data.isActive === undefined) {
-      data.isActive = true;
+      data.isActive = false;
     }
 
     if (data.isActive === true) {
