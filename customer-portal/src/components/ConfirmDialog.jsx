@@ -52,7 +52,7 @@ export const useConfirmDialog = () => {
           onClick={(e) => e.stopPropagation()}
         >
           <h3>{dialogState.title}</h3>
-          <p>{dialogState.message}</p>
+          <p style={{ whiteSpace: 'pre-line' }}>{dialogState.message}</p>
           <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
             <button
               ref={cancelRef}

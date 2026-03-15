@@ -60,11 +60,8 @@ const Flowers = () => {
   } = useDisclosure();
   const [editingProduct, setEditingProduct] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [videoPreview, setVideoPreview] = useState(null);
-  const [videoFile, setVideoFile] = useState(null);
   const fileInputRef = useRef();
   const cameraInputRef = useRef();
-  const videoInputRef = useRef();
   const compressedImageRef = useRef(null);
   const {
     register: registerOverlay,
@@ -200,8 +197,6 @@ const Flowers = () => {
 
     setEditingProduct(null);
     setImagePreview(null);
-    setVideoPreview(null);
-    setVideoFile(null);
     setStrainSearch('');
     setSelectedMatch(null);
     setPendingStrains([]);
@@ -233,11 +228,6 @@ const Flowers = () => {
     if (product.image) {
       setImagePreview(resolveMediaUrl(product.imageUrl, product.image));
     }
-    if (product.video) {
-      setVideoPreview(resolveMediaUrl(product.videoUrl, product.video));
-    } else {
-      setVideoPreview(null);
-    }
     setAddStep(3);
     onOpen();
     // Register modal close handler so back button closes modal first
@@ -254,40 +244,6 @@ const Flowers = () => {
       reader.readAsDataURL(file);
     }
   };
-
-  const validateVideoDuration = (file) => new Promise((resolve) => {
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(video.src);
-      resolve(video.duration <= 15);
-    };
-    video.onerror = () => resolve(false);
-    video.src = URL.createObjectURL(file);
-  });
-
-  const handleVideoChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const isValid = await validateVideoDuration(file);
-    if (!isValid) {
-      toast({ title: 'Video too long', description: 'Max length is 15 seconds.', status: 'warning' });
-      if (videoInputRef.current) videoInputRef.current.value = '';
-      setVideoPreview(null);
-      setVideoFile(null);
-      return;
-    }
-    const nextUrl = URL.createObjectURL(file);
-    setVideoPreview(nextUrl);
-    setVideoFile(file);
-  };
-
-  useEffect(() => {
-    if (videoPreview && videoPreview.startsWith('blob:')) {
-      return () => URL.revokeObjectURL(videoPreview);
-    }
-    return undefined;
-  }, [videoPreview]);
 
   const handleCameraChange = async (e) => {
     try {
@@ -361,9 +317,6 @@ const Flowers = () => {
       } else if (galleryFile) {
         formData.append('image', galleryFile);
       }
-      if (videoFile) {
-        formData.append('video', videoFile);
-      }
       updateMutation.mutate({ id: editingProduct._id, data: formData });
       return;
     }
@@ -413,10 +366,6 @@ const Flowers = () => {
     } else if (galleryFile) {
       formData.append('image', galleryFile);
     }
-    if (videoFile) {
-      formData.append('video', videoFile);
-    }
-
     createMutation.mutate(formData);
   };
 
@@ -1265,14 +1214,6 @@ const Flowers = () => {
                     onChange={handleCameraChange}
                     style={{ display: 'none' }}
                   />
-                  <Input
-                    type="file"
-                    accept="video/*"
-                    ref={videoInputRef}
-                    onChange={handleVideoChange}
-                    display="none"
-                  />
-
                   {imagePreview ? (
                     <Box position="relative" display="inline-block">
                       <Image
@@ -1316,31 +1257,6 @@ const Flowers = () => {
                         Take Photo
                       </Button>
                     </HStack>
-                  )}
-                </Box>
-
-                <Box w="100%" textAlign="center">
-                  {videoPreview ? (
-                    <Box position="relative" display="inline-block">
-                      <Box
-                        as="video"
-                        src={videoPreview}
-                        maxH="200px"
-                        borderRadius="lg"
-                        controls
-                      />
-                      <HStack position="absolute" bottom={2} right={2} spacing={2}>
-                        <IconButton
-                          icon={<FiUpload />}
-                          onClick={() => videoInputRef.current.click()}
-                          aria-label="Change video"
-                        />
-                      </HStack>
-                    </Box>
-                  ) : (
-                    <Button leftIcon={<FiUpload />} onClick={() => videoInputRef.current.click()}>
-                      Upload Video (15s max)
-                    </Button>
                   )}
                 </Box>
 

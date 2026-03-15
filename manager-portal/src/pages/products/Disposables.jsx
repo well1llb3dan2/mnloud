@@ -69,10 +69,7 @@ const Disposables = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
-  const [videoPreview, setVideoPreview] = useState(null);
-  const [videoFile, setVideoFile] = useState(null);
   const fileInputRef = useRef();
-  const videoInputRef = useRef();
   const [addStep, setAddStep] = useState(1);
   const [brand, setBrand] = useState('');
   const [weight, setWeight] = useState('1g');
@@ -174,40 +171,6 @@ const Disposables = () => {
     }
   };
 
-  const validateVideoDuration = (file) => new Promise((resolve) => {
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(video.src);
-      resolve(video.duration <= 15);
-    };
-    video.onerror = () => resolve(false);
-    video.src = URL.createObjectURL(file);
-  });
-
-  const handleVideoChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const isValid = await validateVideoDuration(file);
-    if (!isValid) {
-      toast({ title: 'Video too long', description: 'Max length is 15 seconds.', status: 'warning' });
-      if (videoInputRef.current) videoInputRef.current.value = '';
-      setVideoPreview(null);
-      setVideoFile(null);
-      return;
-    }
-    const nextUrl = URL.createObjectURL(file);
-    setVideoPreview(nextUrl);
-    setVideoFile(file);
-  };
-
-  useEffect(() => {
-    if (videoPreview && videoPreview.startsWith('blob:')) {
-      return () => URL.revokeObjectURL(videoPreview);
-    }
-    return undefined;
-  }, [videoPreview]);
-
   const handleEdit = (product) => {
     setEditingProduct(product);
     setEditFields({
@@ -233,13 +196,7 @@ const Disposables = () => {
     setIsAddFlavorOpen(false);
     setImagePreview(product.imageUrl || null);
     setImageFile(null);
-    if (product.video) { 
-      setVideoPreview(product.videoUrl || `/uploads/${product.video.replace('uploads/', '')}`); 
-    } else { 
-      setVideoPreview(null); 
-    }
     setImageFile(null); 
-    setVideoFile(null); 
     onEditOpen();
   };
 
@@ -255,8 +212,6 @@ const Disposables = () => {
     setIsDualChamber(false);
     setImagePreview(null);
     setImageFile(null);
-    setVideoPreview(null);
-    setVideoFile(null);
     onOpen();
   };
 
@@ -313,7 +268,6 @@ const Disposables = () => {
       formData.append('description', description || '');
       formData.append('isDualChamber', isDualChamber);
       if (imageFile) formData.append('image', imageFile);
-      if (videoFile) formData.append('video', videoFile);
 
       const response = await createMutation.mutateAsync(formData);
       const base = response?.product;
@@ -377,10 +331,6 @@ const Disposables = () => {
       if (imageFile) {
         formData.append('image', imageFile);
       }
-      if (videoFile) {
-        formData.append('video', videoFile);
-      }
-
       await updateMutation.mutateAsync({ id: editingProduct._id, data: formData });
       await Promise.all(
         trimmedFlavors.map((flavor) => {
@@ -651,13 +601,6 @@ const Disposables = () => {
                       onChange={handleImageChange}
                       display="none"
                     />
-                    <Input
-                      type="file"
-                      accept="video/*"
-                      ref={videoInputRef}
-                      onChange={handleVideoChange}
-                      display="none"
-                    />
                     {imagePreview ? (
                       <Box position="relative" display="inline-block">
                         <Image src={imagePreview} maxH="200px" borderRadius="lg" />
@@ -673,31 +616,6 @@ const Disposables = () => {
                     ) : (
                       <Button leftIcon={<FiUpload />} onClick={() => fileInputRef.current.click()}>
                         Upload Image (optional)
-                      </Button>
-                    )}
-                  </Box>
-                  <Box w="100%" textAlign="center">
-                    {videoPreview ? (
-                      <Box position="relative" display="inline-block">
-                        <Box
-                          as="video"
-                          src={videoPreview}
-                          maxH="200px"
-                          borderRadius="lg"
-                          controls
-                        />
-                        <IconButton
-                          icon={<FiUpload />}
-                          position="absolute"
-                          bottom={2}
-                          right={2}
-                          onClick={() => videoInputRef.current.click()}
-                          aria-label="Change video"
-                        />
-                      </Box>
-                    ) : (
-                      <Button leftIcon={<FiUpload />} onClick={() => videoInputRef.current.click()}>
-                        Upload Video (15s max)
                       </Button>
                     )}
                   </Box>
@@ -934,13 +852,6 @@ const Disposables = () => {
                     onChange={handleImageChange}
                     display="none"
                   />
-                  <Input
-                    type="file"
-                    accept="video/*"
-                    ref={videoInputRef}
-                    onChange={handleVideoChange}
-                    display="none"
-                  />
                   {imagePreview ? (
                     <Box position="relative" display="inline-block">
                       <Image src={imagePreview} maxH="200px" borderRadius="lg" />
@@ -957,32 +868,6 @@ const Disposables = () => {
                   ) : (
                     <Button leftIcon={<FiUpload />} onClick={() => fileInputRef.current.click()}>
                       Upload Image
-                    </Button>
-                  )}
-                </Box>
-                <Box w="100%" textAlign="center">
-                  {videoPreview ? (
-                    <Box position="relative" display="inline-block">
-                      <Box
-                        as="video"
-                        src={videoPreview}
-                        maxH="200px"
-                        borderRadius="lg"
-                        controls
-                      />
-                      <IconButton
-                        icon={<FiUpload />}
-                        position="absolute"
-                        bottom={2}
-                        right={2}
-                        onClick={() => videoInputRef.current.click()}
-                        aria-label="Change video"
-                        size="sm"
-                      />
-                    </Box>
-                  ) : (
-                    <Button leftIcon={<FiUpload />} onClick={() => videoInputRef.current.click()}>
-                      Upload Video (15s max)
                     </Button>
                   )}
                 </Box>

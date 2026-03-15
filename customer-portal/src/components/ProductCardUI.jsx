@@ -148,6 +148,12 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
     }
   };
 
+  const strainTypeLabel = (st) => {
+    if (!st) return '';
+    const map = { sativa: 'Sativa', indica: 'Indica', hybrid: 'Hybrid', 'hybrid-s': 'Hybrid-S', 'hybrid-i': 'Hybrid-I' };
+    return map[st] || st;
+  };
+
   const handleAddToCart = async (weight = null, price = null, strain = null, quantity = 1) => {
     const parsedPrice = parseFloat(price) || parseFloat(product.price) || 0;
     const displayName =
@@ -155,16 +161,43 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
       product.strain ||
       `${product.brand || ''}${product.productType ? ` - ${product.productType}` : ''}${product.edibleType ? ` - ${product.edibleType}` : ''}`.trim();
 
-    const summaryParts = [displayName || 'Item'];
-    if (type === 'flower' && weight) summaryParts.push(weight);
-    if ((type === 'concentrate' || type === 'disposable') && strain?.strain) {
-      summaryParts.push(strain.strain2 ? `${strain.strain} / ${strain.strain2}` : strain.strain);
+    // Build detailed line matching cart display
+    const lineParts = [];
+    if (type === 'flower') {
+      lineParts.push(displayName);
+      if (product.strainType) lineParts.push(`(${strainTypeLabel(product.strainType)})`);
+      if (weight) lineParts.push(`— ${weight}`);
+    } else if (type === 'concentrate' || type === 'disposable') {
+      if (product.brand) lineParts.push(product.brand);
+      lineParts.push(displayName);
+      if (strain?.strain) {
+        const strainText = strain.strain2 ? `${strain.strain} / ${strain.strain2}` : strain.strain;
+        lineParts.push(`— ${strainText}`);
+      }
+      if (strain?.strainType) {
+        const typeText = strain.strainType2
+          ? `${strainTypeLabel(strain.strainType)} / ${strainTypeLabel(strain.strainType2)}`
+          : strainTypeLabel(strain.strainType);
+        lineParts.push(`(${typeText})`);
+      }
+    } else if (type === 'edible') {
+      if (product.brand) lineParts.push(product.brand);
+      lineParts.push(displayName);
+      if (strain?.name) lineParts.push(`— ${strain.name}`);
+      if (product.weight) lineParts.push(product.weight);
+    } else {
+      lineParts.push(displayName);
+      if (product.weight) lineParts.push(product.weight);
     }
-    if (quantity > 1) summaryParts.push(`Qty ${quantity}`);
+
+    const itemLine = lineParts.join(' ');
+    const priceLine = `$${(parsedPrice * quantity).toFixed(2)}`;
+    const qtyLine = quantity > 1 ? `Qty: ${quantity}` : '';
+    const details = [itemLine, qtyLine, priceLine].filter(Boolean).join('\n');
 
     const confirmed = await confirm({
       title: 'Add to cart',
-      message: `Add to cart: ${summaryParts.join(' • ')}?`,
+      message: details,
       confirmText: 'Add',
       cancelText: 'Cancel',
     });
