@@ -358,18 +358,12 @@ const Edibles = () => {
               <AccordionItem key={product._id}>
                 <AccordionButton>
                   <Box flex="1" textAlign="left">
-                    <HStack>
-                      <Text fontWeight="bold">{product.name || product.edibleType}</Text>
-                      <Badge colorScheme={product.isActive ? 'green' : 'red'}>
-                        {product.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </HStack>
+                    <Text fontWeight="bold">{product.name || product.edibleType}</Text>
                   </Box>
-                  <Box
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
+                  <HStack spacing={2} onClick={(e) => e.stopPropagation()}>
+                    <Badge colorScheme={product.isActive ? 'green' : 'red'}>
+                      {product.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
                     <Switch
                       isChecked={product.isActive}
                       onChange={(e) =>
@@ -379,7 +373,7 @@ const Edibles = () => {
                         })
                       }
                     />
-                  </Box>
+                  </HStack>
                 </AccordionButton>
                 <AccordionPanel pb={4}>
                   <HStack justify="space-between" align="start">
@@ -422,22 +416,22 @@ const Edibles = () => {
                       <VStack align="stretch" spacing={2}>
                         {product.variants.map((variant) => (
                           <HStack key={variant._id || variant.name} justify="space-between">
-                            <HStack>
+                            <Text>{variant.name}</Text>
+                            <HStack spacing={2}>
                               <Badge colorScheme={variant.isActive !== false ? 'green' : 'red'}>
                                 {variant.isActive !== false ? 'Active' : 'Inactive'}
                               </Badge>
-                              <FiImage size={14} color={variant.image ? '#38A169' : '#A0AEC0'} />
-                              <Text>{variant.name}</Text>
+                              <Switch
+                                isChecked={variant.isActive !== false}
+                                onChange={(e) =>
+                                  updateVariantMutation.mutate({
+                                    id: variant._id,
+                                    data: { isActive: e.target.checked },
+                                  })
+                                }
+                              />
+                              <FiImage size={14} color={variant.image ? '#38A169' : '#A0AEC0'} style={{ flexShrink: 0 }} />
                             </HStack>
-                            <Switch
-                              isChecked={variant.isActive !== false}
-                              onChange={(e) =>
-                                updateVariantMutation.mutate({
-                                  id: variant._id,
-                                  data: { isActive: e.target.checked },
-                                })
-                              }
-                            />
                           </HStack>
                         ))}
                       </VStack>

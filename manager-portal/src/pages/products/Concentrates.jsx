@@ -530,20 +530,14 @@ const Concentrates = () => {
               <AccordionItem key={product._id}>
                 <AccordionButton>
                   <Box flex="1" textAlign="left">
-                    <HStack>
-                      <Text>
-                        {product.brand ? `${product.brand} - ` : ''}{product.productType}
-                      </Text>
-                      <Badge colorScheme={product.isActive ? 'green' : 'red'}>
-                        {product.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </HStack>
+                    <Text>
+                      {product.brand ? `${product.brand} - ` : ''}{product.productType}
+                    </Text>
                   </Box>
-                  <Box
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
+                  <HStack spacing={2} onClick={(e) => e.stopPropagation()}>
+                    <Badge colorScheme={product.isActive ? 'green' : 'red'}>
+                      {product.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
                     <Switch
                       isChecked={product.isActive}
                       onChange={(e) =>
@@ -553,7 +547,7 @@ const Concentrates = () => {
                         })
                       }
                     />
-                  </Box>
+                  </HStack>
                 </AccordionButton>
                 <AccordionPanel pb={4}>
                   <HStack justify="space-between" align="start">
@@ -594,22 +588,22 @@ const Concentrates = () => {
                       <VStack align="stretch" spacing={2}>
                         {product.strains.map((strain) => (
                           <HStack key={strain._id} justify="space-between">
-                            <HStack>
+                            <Text>{strain.strain}</Text>
+                            <HStack spacing={2}>
                               <Badge colorScheme={strain.isActive ? 'green' : 'red'}>
                                 {strain.isActive ? 'Active' : 'Inactive'}
                               </Badge>
-                              <FiImage size={14} color={strain.image ? '#38A169' : '#A0AEC0'} />
-                              <Text>{strain.strain}</Text>
+                              <Switch
+                                isChecked={strain.isActive}
+                                onChange={(e) =>
+                                  toggleFlavorMutation.mutate({
+                                    id: strain._id,
+                                    isActive: e.target.checked,
+                                  })
+                                }
+                              />
+                              <FiImage size={14} color={strain.image ? '#38A169' : '#A0AEC0'} style={{ flexShrink: 0 }} />
                             </HStack>
-                            <Switch
-                              isChecked={strain.isActive}
-                              onChange={(e) =>
-                                toggleFlavorMutation.mutate({
-                                  id: strain._id,
-                                  isActive: e.target.checked,
-                                })
-                              }
-                            />
                           </HStack>
                         ))}
                       </VStack>

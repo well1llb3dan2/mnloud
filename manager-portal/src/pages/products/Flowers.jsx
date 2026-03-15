@@ -1114,26 +1114,17 @@ const Flowers = () => {
                   <Box flex="1" textAlign="left">
                     <HStack>
                       <Text fontWeight="bold">{product.strain}</Text>
-                      <Badge colorScheme={product.isActive ? 'green' : 'red'}>
-                        {product.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
                       {product.isPrePack && (
                         <Badge colorScheme="blue" variant="subtle">
                           Pre-Pack
                         </Badge>
                       )}
-                      <FiImage
-                        size={14}
-                        color={product.image || product.imageUrl ? '#38A169' : '#A0AEC0'}
-                        style={{ flexShrink: 0 }}
-                      />
                     </HStack>
                   </Box>
-                  <Box
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
+                  <HStack spacing={2} onClick={(e) => e.stopPropagation()}>
+                    <Badge colorScheme={product.isActive ? 'green' : 'red'}>
+                      {product.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
                     <Switch
                       isChecked={product.isActive}
                       onChange={(e) =>
@@ -1143,7 +1134,12 @@ const Flowers = () => {
                         })
                       }
                     />
-                  </Box>
+                    <FiImage
+                      size={14}
+                      color={product.image || product.imageUrl ? '#38A169' : '#A0AEC0'}
+                      style={{ flexShrink: 0 }}
+                    />
+                  </HStack>
                 </AccordionButton>
                 <AccordionPanel pb={4}>
                   <HStack justify="space-between" align="start">

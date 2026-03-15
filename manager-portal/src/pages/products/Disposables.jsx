@@ -497,21 +497,12 @@ const Disposables = () => {
                       {product.isDualChamber && (
                         <Badge colorScheme="purple">Dual Chamber</Badge>
                       )}
-                      <Badge colorScheme={product.isActive ? 'green' : 'red'}>
-                        {product.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                      <FiImage
-                        size={14}
-                        color={product.image || product.imageUrl ? '#38A169' : '#A0AEC0'}
-                        style={{ flexShrink: 0 }}
-                      />
                     </HStack>
                   </Box>
-                  <Box
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
+                  <HStack spacing={2} onClick={(e) => e.stopPropagation()}>
+                    <Badge colorScheme={product.isActive ? 'green' : 'red'}>
+                      {product.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
                     <Switch
                       isChecked={product.isActive}
                       onChange={(e) =>
@@ -521,7 +512,12 @@ const Disposables = () => {
                         })
                       }
                     />
-                  </Box>
+                    <FiImage
+                      size={14}
+                      color={product.image || product.imageUrl ? '#38A169' : '#A0AEC0'}
+                      style={{ flexShrink: 0 }}
+                    />
+                  </HStack>
                 </AccordionButton>
                 <AccordionPanel pb={4}>
                   <HStack justify="space-between" align="start">
