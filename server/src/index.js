@@ -213,15 +213,21 @@ const cleanupOrders = async () => {
     const cancelledCutoff = new Date(now - 24 * 60 * 60 * 1000);
     const completedCutoff = new Date(now - 48 * 60 * 60 * 1000);
 
+    // Delete cancelled orders older than 24 hours
     await Order.deleteMany({
       status: 'cancelled',
       updatedAt: { $lte: cancelledCutoff },
     });
 
-    await Order.deleteMany({
-      status: 'completed',
-      updatedAt: { $lte: completedCutoff },
-    });
+    // Archive completed orders older than 48 hours
+    await Order.updateMany(
+      {
+        status: 'completed',
+        archived: { $ne: true },
+        updatedAt: { $lte: completedCutoff },
+      },
+      { $set: { archived: true } }
+    );
   } catch (error) {
     console.warn('Order cleanup skipped:', error?.message || error);
   }

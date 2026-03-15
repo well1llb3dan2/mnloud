@@ -1,10 +1,10 @@
 import { Order } from '../models/index.js';
 import { emitToRoom } from '../socket/bus.js';
 
-// Get customer's order history
+// Get customer's order history (excludes archived)
 export const getCustomerOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ customer: req.user._id })
+    const orders = await Order.find({ customer: req.user._id, archived: { $ne: true } })
       .sort({ createdAt: -1 });
     
     res.json({ orders });
@@ -14,14 +14,19 @@ export const getCustomerOrders = async (req, res) => {
   }
 };
 
-// Get all orders (manager)
+// Get all orders (manager) — active (non-archived) by default
 export const getAllOrders = async (req, res) => {
   try {
-    const { status, limit = 50, page = 1 } = req.query;
+    const { status, archived, limit = 50, page = 1 } = req.query;
     
     const query = {};
     if (status) {
       query.status = status;
+    }
+    if (archived === 'true') {
+      query.archived = true;
+    } else {
+      query.archived = { $ne: true };
     }
     
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -104,6 +109,10 @@ export const updateOrderStatus = async (req, res) => {
     
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.archived) {
+      return res.status(400).json({ message: 'Cannot modify archived orders' });
     }
     
     if (status) order.status = status;

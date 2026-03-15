@@ -10,11 +10,13 @@ import {
   IconButton,
   Button,
   useColorMode,
+  useToast,
   Spinner,
   Center,
   Avatar,
   Flex,
   Image,
+  Badge,
 } from '@chakra-ui/react';
 import { FiSend, FiArrowLeft, FiImage, FiCheck, FiCheckCircle } from 'react-icons/fi';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -22,6 +24,7 @@ import { authService, chatService, orderService } from '../services';
 import { useChatStore, useAuthStore } from '../stores';
 import { useSocket } from '../context/SocketContext';
 import { decryptMessages, decryptMessage, encryptForRecipients } from '../utils/e2ee';
+import { useConfirmDialog } from '../components/ConfirmDialog';
 
 const ChatDetail = () => {
   const { conversationId } = useParams();
@@ -29,6 +32,8 @@ const ChatDetail = () => {
   const { colorMode } = useColorMode();
   const { socket, joinConversation, leaveConversation, markAsRead, startTyping, stopTyping } = useSocket();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const messagesEndRef = useRef();
   const messagesContainerRef = useRef();
   const fileInputRef = useRef();
@@ -304,6 +309,27 @@ const ChatDetail = () => {
     },
   });
 
+  const cancelOrderMutation = useMutation({
+    mutationFn: (id) => orderService.updateStatus(id, 'cancelled'),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['orderByMessage']);
+      queryClient.invalidateQueries(['orders']);
+      toast({ title: 'Order cancelled', status: 'info' });
+    },
+  });
+
+  const handleCancelOrder = async (orderId) => {
+    const shouldCancel = await confirm({
+      title: 'Cancel order',
+      message: 'Cancel this order?',
+      confirmText: 'Cancel Order',
+      cancelText: 'Back',
+    });
+    if (shouldCancel) {
+      cancelOrderMutation.mutate(orderId);
+    }
+  };
+
   const handleSend = async () => {
     if (!message.trim() || !user?._id) return;
 
@@ -483,19 +509,42 @@ const ChatDetail = () => {
                       borderRadius="md"
                     />
                   ) : isOrder ? (
-                    <Button
-                      size="sm"
-                      colorScheme="purple"
-                      variant="outline"
-                      onClick={() => {
-                        if (order?._id) {
-                          navigate('/orders', { state: { openOrderId: order._id } });
-                        }
-                      }}
-                      isDisabled={!order?._id}
-                    >
-                      Order #{(order?._id || msg._id).slice(-6).toUpperCase()} &bull; {format(new Date(msg.createdAt), 'MMM d, h:mm a')}
-                    </Button>
+                    <VStack spacing={1} align="stretch">
+                      <HStack spacing={2}>
+                        <Button
+                          size="sm"
+                          colorScheme="purple"
+                          variant="outline"
+                          onClick={() => {
+                            if (order?._id) {
+                              navigate('/orders', { state: { openOrderId: order._id } });
+                            }
+                          }}
+                          isDisabled={!order?._id}
+                        >
+                          Order #{(order?._id || msg._id).slice(-6).toUpperCase()}
+                        </Button>
+                        {order?.status && (
+                          <Badge
+                            colorScheme={order.status === 'pending' ? 'yellow' : order.status === 'completed' ? 'green' : 'red'}
+                            fontSize="xs"
+                          >
+                            {order.status}
+                          </Badge>
+                        )}
+                      </HStack>
+                      {order?.status === 'pending' && (
+                        <Button
+                          size="xs"
+                          colorScheme="red"
+                          variant="ghost"
+                          onClick={() => handleCancelOrder(order._id)}
+                          isLoading={cancelOrderMutation.isPending}
+                        >
+                          Cancel Order
+                        </Button>
+                      )}
+                    </VStack>
                   ) : (
                     <Text>{msg.content}</Text>
                   )}
@@ -563,6 +612,7 @@ const ChatDetail = () => {
           />
         </HStack>
       </Box>
+      <ConfirmDialog />
     </Box>
   );
 };

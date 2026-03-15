@@ -16,6 +16,7 @@ import PriceTiers from './pages/PriceTiers';
 import Chats from './pages/Chats';
 import ChatDetail from './pages/ChatDetail';
 import Orders from './pages/Orders';
+import ArchivedOrders from './pages/ArchivedOrders';
 import Invites from './pages/Invites';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
@@ -206,6 +207,7 @@ function App() {
           <Route path="chats" element={<Chats />} />
           <Route path="chats/:conversationId" element={<ChatDetail />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/archive" element={<ArchivedOrders />} />
           <Route path="invites" element={<Invites />} />
           <Route path="users" element={<Users />} />
           <Route path="profile" element={<Profile />} />

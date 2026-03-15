@@ -1,21 +1,19 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   HStack,
   Text,
   useColorMode,
-  useToast,
   Spinner,
   Center,
   Badge,
-  Select,
   Button,
 } from '@chakra-ui/react';
+import { FiArrowLeft } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { orderService, productService } from '../services';
-import { useConfirmDialog } from '../components/ConfirmDialog';
 import { optimizeFlowerPricing, buildPriceTierMap } from '../utils/tierOptimizer';
 
 const statusColors = {
@@ -28,14 +26,6 @@ const getItemTotal = (item) => {
   if (typeof item.priceTotal === 'number') return item.priceTotal;
   if (typeof item.priceEach === 'number' && typeof item.quantity === 'number') {
     return item.priceEach * item.quantity;
-  }
-  return 0;
-};
-
-const getOrderTotal = (order) => {
-  if (typeof order.total === 'number') return order.total;
-  if (Array.isArray(order.items)) {
-    return order.items.reduce((sum, item) => sum + getItemTotal(item), 0);
   }
   return 0;
 };
@@ -63,9 +53,7 @@ const strainTypeLabel = (st) => {
 
 const formatItemLine = (item) => {
   const parts = [];
-  // Brand (concentrates, disposables, edibles)
   if (item.brand) parts.push(item.brand);
-  // Product name
   parts.push(item.productName);
 
   if (item.productType === 'flower') {
@@ -93,19 +81,13 @@ const formatItemLine = (item) => {
   return parts.join(' ');
 };
 
-const Orders = () => {
+const ArchivedOrders = () => {
   const { colorMode } = useColorMode();
-  const toast = useToast();
-  const queryClient = useQueryClient();
-  const { confirm, ConfirmDialog } = useConfirmDialog();
-  const [statusFilter, setStatusFilter] = useState('');
-  const location = useLocation();
   const navigate = useNavigate();
-  const [autoOpenId, setAutoOpenId] = useState(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', statusFilter],
-    queryFn: () => orderService.getAll(statusFilter ? { status: statusFilter } : {}),
+    queryKey: ['orders', 'archived'],
+    queryFn: () => orderService.getAll({ archived: true, limit: 200 }),
   });
 
   const { data: flowersData } = useQuery({
@@ -121,49 +103,6 @@ const Orders = () => {
 
   const orders = data?.orders || [];
 
-  useEffect(() => {
-    const openId = location.state?.openOrderId;
-    if (openId) {
-      setAutoOpenId(openId);
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    if (!autoOpenId || orders.length === 0) return;
-    const el = document.getElementById(`order-${autoOpenId}`);
-    if (el) {
-      el.open = true;
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setAutoOpenId(null);
-    }
-  }, [autoOpenId, orders]);
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, status }) => orderService.updateStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['orders']);
-      toast({ title: 'Order updated', status: 'success' });
-    },
-  });
-
-  const handleStatusChange = async (orderId, newStatus) => {
-    const labels = {
-      completed: { title: 'Complete order', message: 'Mark this order as completed?', confirmText: 'Complete' },
-      cancelled: { title: 'Cancel order', message: 'Cancel this order?', confirmText: 'Cancel Order' },
-      pending: { title: 'Reopen order', message: 'Set this order back to pending?', confirmText: 'Reopen' },
-    };
-    const label = labels[newStatus] || { title: 'Update order', message: `Set status to ${newStatus}?`, confirmText: 'Update' };
-    const shouldUpdate = await confirm({
-      title: label.title,
-      message: label.message,
-      confirmText: label.confirmText,
-      cancelText: 'Back',
-    });
-    if (shouldUpdate) {
-      updateMutation.mutate({ id: orderId, status: newStatus });
-    }
-  };
-
   if (isLoading) {
     return (
       <Center h="50vh">
@@ -178,32 +117,16 @@ const Orders = () => {
 
   return (
     <Box p={4}>
-      <HStack justify="space-between" mb={4}>
-        <Text fontSize="2xl" fontWeight="bold">Orders</Text>
-        <HStack spacing={2}>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate('/orders/archive')}
-          >
-            Archive
-          </Button>
-          <Select
-            maxW="160px"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            placeholder="All Status"
-          >
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </Select>
-        </HStack>
+      <HStack mb={4} spacing={3}>
+        <Button size="sm" variant="ghost" onClick={() => navigate('/orders')} leftIcon={<FiArrowLeft />}>
+          Back
+        </Button>
+        <Text fontSize="2xl" fontWeight="bold">Archived Orders</Text>
       </HStack>
 
       {orders.length === 0 ? (
         <Center h="200px">
-          <Text color="gray.500">No orders found</Text>
+          <Text color="gray.500">No archived orders</Text>
         </Center>
       ) : (
         <Box display="grid" gap={3}>
@@ -217,7 +140,6 @@ const Orders = () => {
             return (
               <details
                 key={order._id}
-                id={`order-${order._id}`}
                 style={{
                   background: cardBg,
                   borderRadius: 12,
@@ -230,7 +152,7 @@ const Orders = () => {
                     <div>
                       <strong>{customerName}</strong>
                       <div style={{ fontSize: 12, opacity: 0.6, marginTop: 2 }}>
-                        {format(new Date(order.createdAt), 'MMM d, h:mm a')}
+                        {format(new Date(order.createdAt), 'MMM d, yyyy — h:mm a')}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -327,53 +249,14 @@ const Orders = () => {
                       {order.notes}
                     </div>
                   )}
-
-                  {order.status === 'pending' && (
-                    <HStack spacing={2}>
-                      <Button
-                        colorScheme="green"
-                        flex={1}
-                        size="lg"
-                        onClick={() => handleStatusChange(order._id, 'completed')}
-                        isLoading={updateMutation.isPending}
-                      >
-                        Mark Complete
-                      </Button>
-                      <Button
-                        colorScheme="red"
-                        flex={1}
-                        size="lg"
-                        variant="outline"
-                        onClick={() => handleStatusChange(order._id, 'cancelled')}
-                        isLoading={updateMutation.isPending}
-                      >
-                        Cancel
-                      </Button>
-                    </HStack>
-                  )}
-
-                  {order.status === 'completed' && (
-                    <Button
-                      colorScheme="yellow"
-                      w="100%"
-                      size="lg"
-                      variant="outline"
-                      onClick={() => handleStatusChange(order._id, 'pending')}
-                      isLoading={updateMutation.isPending}
-                    >
-                      Reopen as Pending
-                    </Button>
-                  )}
                 </div>
               </details>
             );
           })}
         </Box>
       )}
-
-      <ConfirmDialog />
     </Box>
   );
 };
 
-export default Orders;
+export default ArchivedOrders;

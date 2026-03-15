@@ -50,9 +50,9 @@ const Chats = () => {
     queryFn: () => orderService.getAll({ status: 'pending', limit: 500 }),
   });
 
-  const { data: confirmedOrdersData } = useQuery({
-    queryKey: ['orders', 'confirmed', 'contacts'],
-    queryFn: () => orderService.getAll({ status: 'confirmed', limit: 500 }),
+  const { data: completedOrdersData } = useQuery({
+    queryKey: ['orders', 'completed', 'contacts'],
+    queryFn: () => orderService.getAll({ status: 'completed', limit: 500 }),
   });
 
   // Listen for new messages
@@ -102,7 +102,7 @@ const Chats = () => {
     return acc;
   }, {});
 
-  const confirmedByCustomer = (confirmedOrdersData?.orders || []).reduce((acc, order) => {
+  const completedByCustomer = (completedOrdersData?.orders || []).reduce((acc, order) => {
     const id = order.customer?._id;
     if (!id) return acc;
     acc[id] = (acc[id] || 0) + 1;
@@ -127,7 +127,7 @@ const Chats = () => {
             const isTyping = typingUsers[conversation._id];
             const unread = conversation.unreadCount || 0;
             const pendingCount = pendingByCustomer[customer?._id] || 0;
-            const confirmedCount = confirmedByCustomer[customer?._id] || 0;
+            const confirmedCount = completedByCustomer[customer?._id] || 0;
             const lastMessage = conversation.lastMessage;
             const lastMessageText = !lastMessage
               ? 'No messages yet'

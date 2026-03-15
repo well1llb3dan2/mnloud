@@ -32,7 +32,7 @@ router.patch(
   [
     body('status')
       .optional()
-      .isIn(['pending', 'completed'])
+      .isIn(['pending', 'completed', 'cancelled'])
       .withMessage('Invalid status'),
   ],
   handleValidation,
