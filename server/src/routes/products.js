@@ -80,13 +80,13 @@ router.patch('/flower/:id', upload.fields([{ name: 'image', maxCount: 1 }, { nam
 router.delete('/flower/:id', deleteFlower);
 
 // Concentrates
-router.post('/concentrates', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, createConcentrateBase);
-router.patch('/concentrates/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, updateConcentrateBase);
+router.post('/concentrates', createConcentrateBase);
+router.patch('/concentrates/:id', updateConcentrateBase);
 router.delete('/concentrates/:id', deleteConcentrateBase);
 
 // Concentrate Strains
-router.post('/concentrates/:baseId/strains', addConcentrateStrain);
-router.patch('/concentrates/strains/:strainId', updateConcentrateStrain);
+router.post('/concentrates/:baseId/strains', upload.fields([{ name: 'image', maxCount: 1 }]), handleUploadError, addConcentrateStrain);
+router.patch('/concentrates/strains/:strainId', upload.fields([{ name: 'image', maxCount: 1 }]), handleUploadError, updateConcentrateStrain);
 router.delete('/concentrates/strains/:strainId', deleteConcentrateStrain);
 
 // Disposables
@@ -100,11 +100,11 @@ router.patch('/disposables/strains/:strainId', updateDisposableStrain);
 router.delete('/disposables/strains/:strainId', deleteDisposableStrain);
 
 // Edibles
-router.post('/edibles', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, createEdible);
-router.patch('/edibles/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), handleUploadError, updateEdible);
+router.post('/edibles', createEdible);
+router.patch('/edibles/:id', updateEdible);
 router.delete('/edibles/:id', deleteEdible);
-router.post('/edibles/:id/variants', addEdibleVariant);
-router.patch('/edibles/variants/:variantId', updateEdibleVariant);
+router.post('/edibles/:id/variants', upload.fields([{ name: 'image', maxCount: 1 }]), handleUploadError, addEdibleVariant);
+router.patch('/edibles/variants/:variantId', upload.fields([{ name: 'image', maxCount: 1 }]), handleUploadError, updateEdibleVariant);
 router.delete('/edibles/variants/:variantId', deleteEdibleVariant);
 
 // Delete product image

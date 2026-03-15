@@ -22,6 +22,13 @@ const attachMediaUrls = async (product, role = 'customer') => {
   return { ...product, imageUrl, videoUrl };
 };
 
+const attachStrainMediaUrls = async (strain, role = 'customer') => {
+  if (!strain || !isR2Active(role)) return strain;
+  const obj = typeof strain.toObject === 'function' ? strain.toObject() : strain;
+  const imageUrl = await getSignedMediaUrl(obj.image, { role });
+  return { ...obj, imageUrl };
+};
+
 const parseListField = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
@@ -341,9 +348,12 @@ export const getConcentrateBases = async (req, res) => {
           .sort({ createdAt: -1, _id: -1 });
         
         const enriched = await attachMediaUrls(base.toObject(), role);
+        const enrichedStrains = await Promise.all(
+          strains.map((s) => attachStrainMediaUrls(s, role))
+        );
         return {
           ...enriched,
-          strains,
+          strains: enrichedStrains,
         };
       })
     );
@@ -374,16 +384,6 @@ export const createConcentrateBase = async (req, res) => {
 
     if (!data.name && data.productType) {
       data.name = data.brand ? `${data.brand} - ${data.productType}` : data.productType;
-    }
-    
-    const imageFile = req.files?.image?.[0] || req.file;
-    const videoFile = req.files?.video?.[0];
-    if (imageFile) {
-      data.image = await storeUpload(imageFile, { role: 'manager' });
-    }
-    if (videoFile) {
-      const mutedVideo = await stripAudio(videoFile);
-      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
     const base = new ConcentrateBase(data);
@@ -420,18 +420,6 @@ export const updateConcentrateBase = async (req, res) => {
 
     if (wasActive === false && data.isActive === true) {
       data.lastActivatedAt = new Date();
-    }
-    
-    const imageFile = req.files?.image?.[0] || req.file;
-    const videoFile = req.files?.video?.[0];
-    if (imageFile) {
-      await deleteMedia(base.image, { role: 'manager' });
-      data.image = await storeUpload(imageFile, { role: 'manager' });
-    }
-    if (videoFile) {
-      await deleteMedia(base.video, { role: 'manager' });
-      const mutedVideo = await stripAudio(videoFile);
-      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
     Object.assign(base, data);
@@ -472,11 +460,11 @@ export const deleteConcentrateBase = async (req, res) => {
     const wasActive = base.isActive;
     const productName = base.name || 'Concentrate';
 
-    // Delete all associated strains
+    // Delete all associated strains and their images
+    const strains = await ConcentrateStrain.find({ concentrateBase: id });
+    await Promise.all(strains.map((s) => deleteMedia(s.image, { role: 'manager' })));
     await ConcentrateStrain.deleteMany({ concentrateBase: id });
     
-    await deleteMedia(base.image, { role: 'manager' });
-    await deleteMedia(base.video, { role: 'manager' });
     await base.deleteOne();
 
     if (wasActive) {
@@ -520,6 +508,11 @@ export const addConcentrateStrain = async (req, res) => {
     if (!base) {
       return res.status(404).json({ message: 'Concentrate base not found' });
     }
+
+    const imageFile = req.files?.image?.[0] || req.file;
+    if (imageFile) {
+      data.image = await storeUpload(imageFile, { role: 'manager' });
+    }
     
     const strain = new ConcentrateStrain({
       ...data,
@@ -528,7 +521,8 @@ export const addConcentrateStrain = async (req, res) => {
     
     await strain.save();
     
-    res.status(201).json({ strain });
+    const enriched = await attachStrainMediaUrls(strain, 'manager');
+    res.status(201).json({ strain: enriched });
   } catch (error) {
     console.error('Add concentrate strain error:', error);
     res.status(500).json({ message: 'Server error adding strain' });
@@ -555,6 +549,12 @@ export const updateConcentrateStrain = async (req, res) => {
     if (wasActive === false && data.isActive === true) {
       data.lastActivatedAt = new Date();
     }
+
+    const imageFile = req.files?.image?.[0] || req.file;
+    if (imageFile) {
+      await deleteMedia(strain.image, { role: 'manager' });
+      data.image = await storeUpload(imageFile, { role: 'manager' });
+    }
     
     Object.assign(strain, data);
     await strain.save();
@@ -571,7 +571,8 @@ export const updateConcentrateStrain = async (req, res) => {
       });
     }
 
-    res.json({ strain });
+    const enriched = await attachStrainMediaUrls(strain, 'manager');
+    res.json({ strain: enriched });
   } catch (error) {
     console.error('Update concentrate strain error:', error);
     res.status(500).json({ message: 'Server error updating strain' });
@@ -587,6 +588,8 @@ export const deleteConcentrateStrain = async (req, res) => {
     if (!strain) {
       return res.status(404).json({ message: 'Strain not found' });
     }
+
+    await deleteMedia(strain.image, { role: 'manager' });
 
     if (strain.isActive) {
       emitToRoom('customers', 'products:updated', {
@@ -1027,7 +1030,16 @@ export const getEdibles = async (req, res) => {
     
     const role = req.user?.role || 'customer';
     const products = await Promise.all(
-      edibles.map((edible) => attachMediaUrls(edible.toObject(), role))
+      edibles.map(async (edible) => {
+        const obj = edible.toObject();
+        const enriched = await attachMediaUrls(obj, role);
+        if (enriched.variants?.length) {
+          enriched.variants = await Promise.all(
+            enriched.variants.map((v) => attachStrainMediaUrls(v, role))
+          );
+        }
+        return enriched;
+      })
     );
 
     res.json({ products });
@@ -1087,16 +1099,6 @@ export const createEdible = async (req, res) => {
       data.variantCount = data.variants.length;
     }
     
-    const imageFile = req.files?.image?.[0] || req.file;
-    const videoFile = req.files?.video?.[0];
-    if (imageFile) {
-      data.image = await storeUpload(imageFile, { role: 'manager' });
-    }
-    if (videoFile) {
-      const mutedVideo = await stripAudio(videoFile);
-      data.video = await storeUpload(mutedVideo, { role: 'manager' });
-    }
-    
     const edible = new Edible(data);
     await edible.save();
     
@@ -1131,18 +1133,6 @@ export const updateEdible = async (req, res) => {
 
     if (wasActive === false && data.isActive === true) {
       data.lastActivatedAt = new Date();
-    }
-    
-    const imageFile = req.files?.image?.[0] || req.file;
-    const videoFile = req.files?.video?.[0];
-    if (imageFile) {
-      await deleteMedia(edible.image, { role: 'manager' });
-      data.image = await storeUpload(imageFile, { role: 'manager' });
-    }
-    if (videoFile) {
-      await deleteMedia(edible.video, { role: 'manager' });
-      const mutedVideo = await stripAudio(videoFile);
-      data.video = await storeUpload(mutedVideo, { role: 'manager' });
     }
     
     Object.assign(edible, data);
@@ -1183,15 +1173,24 @@ export const addEdibleVariant = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    edible.variants.push({
+    const variantData = {
       name: trimmed,
       isActive: true,
       sortOrder: Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : edible.variants.length,
-    });
+    };
+
+    const imageFile = req.files?.image?.[0] || req.file;
+    if (imageFile) {
+      variantData.image = await storeUpload(imageFile, { role: 'manager' });
+    }
+
+    edible.variants.push(variantData);
     edible.variantCount = edible.variants.length;
     await edible.save();
 
-    res.status(201).json({ product: edible, variant: edible.variants[edible.variants.length - 1] });
+    const newVariant = edible.variants[edible.variants.length - 1];
+    const enrichedVariant = await attachStrainMediaUrls(newVariant.toObject(), 'manager');
+    res.status(201).json({ product: edible, variant: enrichedVariant });
   } catch (error) {
     console.error('Add edible variant error:', error);
     res.status(500).json({ message: 'Server error adding edible variant' });
@@ -1235,6 +1234,12 @@ export const updateEdibleVariant = async (req, res) => {
       }
     }
 
+    const imageFile = req.files?.image?.[0] || req.file;
+    if (imageFile) {
+      await deleteMedia(variant.image, { role: 'manager' });
+      variant.image = await storeUpload(imageFile, { role: 'manager' });
+    }
+
     await edible.save();
 
     if (parsedIsActive !== undefined && wasActive !== variant.isActive) {
@@ -1262,6 +1267,11 @@ export const deleteEdibleVariant = async (req, res) => {
       return res.status(404).json({ message: 'Variant not found' });
     }
 
+    const removedVariant = edible.variants.id(variantId);
+    if (removedVariant?.image) {
+      await deleteMedia(removedVariant.image, { role: 'manager' });
+    }
+
     edible.variants = edible.variants.filter((variant) => String(variant._id) !== String(variantId));
     edible.variantCount = edible.variants.length || 1;
     await edible.save();
@@ -1286,8 +1296,8 @@ export const deleteEdible = async (req, res) => {
     const wasActive = edible.isActive;
     const productName = edible.name || edible.edibleType || 'Edible';
 
-    await deleteMedia(edible.image, { role: 'manager' });
-    await deleteMedia(edible.video, { role: 'manager' });
+    // Delete variant images
+    await Promise.all(edible.variants.map((v) => deleteMedia(v.image, { role: 'manager' })));
     await edible.deleteOne();
 
     if (wasActive) {
@@ -1329,9 +1339,12 @@ export const getAllProducts = async (req, res) => {
         }).sort({ createdAt: -1, _id: -1 });
         
         const enriched = await attachMediaUrls(base.toObject(), 'customer');
+        const enrichedStrains = await Promise.all(
+          strains.map((s) => attachStrainMediaUrls(s, 'customer'))
+        );
         return {
           ...enriched,
-          strains,
+          strains: enrichedStrains,
         };
       })
     );
@@ -1356,7 +1369,16 @@ export const getAllProducts = async (req, res) => {
       flowers.map((flower) => attachMediaUrls(flower.toObject(), 'customer'))
     );
     const ediblesWithMedia = await Promise.all(
-      edibles.map((edible) => attachMediaUrls(edible.toObject(), 'customer'))
+      edibles.map(async (edible) => {
+        const obj = edible.toObject();
+        const enriched = await attachMediaUrls(obj, 'customer');
+        if (enriched.variants?.length) {
+          enriched.variants = await Promise.all(
+            enriched.variants.map((v) => attachStrainMediaUrls(v, 'customer'))
+          );
+        }
+        return enriched;
+      })
     );
     
     res.json({

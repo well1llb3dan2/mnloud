@@ -27,7 +27,6 @@ import {
   ModalCloseButton,
   useDisclosure,
   Badge,
-  Image,
   Accordion,
   AccordionItem,
   AccordionButton,
@@ -36,7 +35,7 @@ import {
   WrapItem,
   Divider,
 } from '@chakra-ui/react';
-import { FiPlus, FiEdit2, FiCamera, FiUpload, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiImage, FiTrash2, FiCheck } from 'react-icons/fi';
 import { useConfirmDialog } from '../../components/ConfirmDialog';
 import { useOverlayStack } from '../../context';
 import { productService } from '../../services';
@@ -64,9 +63,7 @@ const Concentrates = () => {
     onClose: onEditClose,
   } = useDisclosure();
   const [editingProduct, setEditingProduct] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
-  const fileInputRef = useRef();
+
   const [addStep, setAddStep] = useState(1);
   const [selectedType, setSelectedType] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
@@ -82,7 +79,8 @@ const Concentrates = () => {
   const [newFlavorType, setNewFlavorType] = useState('hybrid-s');
   const [isAddFlavorOpen, setIsAddFlavorOpen] = useState(false);
   const { confirm, ConfirmDialog } = useConfirmDialog();
-  const { registerBackAction, unregisterBackAction } = useOverlayStack();
+  const { registerBackAction, unregisterBackAction, register: registerOverlay, unregister: unregisterOverlay } = useOverlayStack();
+  const flavorFileRefs = useRef({});
 
   useEffect(() => {
     if (!isOpen || editingProduct || addStep <= 1) return;
@@ -90,6 +88,20 @@ const Concentrates = () => {
     registerBackAction(handleStepBack);
     return () => unregisterBackAction(handleStepBack);
   }, [isOpen, editingProduct, addStep, registerBackAction, unregisterBackAction]);
+
+  useEffect(() => {
+    if (!isEditOpen) return;
+    const closeFn = () => {
+      if (window.confirm('Discard unsaved changes?')) {
+        onEditClose();
+        setEditingProduct(null);
+        return undefined;
+      }
+      return false;
+    };
+    registerOverlay(closeFn);
+    return () => unregisterOverlay(closeFn);
+  }, [isEditOpen, onEditClose, registerOverlay, unregisterOverlay]);
 
   const [editFields, setEditFields] = useState({
     brand: '',
@@ -137,11 +149,7 @@ const Concentrates = () => {
   });
 
   const toggleBaseMutation = useMutation({
-    mutationFn: ({ id, isActive }) => {
-      const formData = new FormData();
-      formData.append('isActive', isActive);
-      return productService.updateConcentrateBase(id, formData);
-    },
+    mutationFn: ({ id, isActive }) => productService.updateConcentrateBase(id, { isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries(['concentrates']);
     },
@@ -181,12 +189,12 @@ const Concentrates = () => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result);
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const strainId = e.target.dataset.strainId;
+    if (!strainId) return;
+    const formData = new FormData();
+    formData.append('image', file);
+    updateStrainMutation.mutate({ id: strainId, data: formData });
   };
 
   const handleEdit = (product) => {
@@ -204,14 +212,13 @@ const Concentrates = () => {
         strain: strain.strain || '',
         strainType: strain.strainType || 'hybrid-s',
         isActive: strain.isActive,
+        image: strain.image || null,
       }))
     );
     setNewFlavorName('');
     setNewFlavorType('hybrid-s');
     setIsAddFlavorOpen(false);
-    setImagePreview(product.imageUrl || null);
-    setImageFile(null);
-    setImageFile(null); 
+    flavorFileRefs.current = {};
     onEditOpen();
   };
 
@@ -227,8 +234,6 @@ const Concentrates = () => {
     setPrice('');
     setDescription('');
     setFlavors([]);
-    setImagePreview(null);
-    setImageFile(null);
     onOpen();
   };
 
@@ -266,28 +271,36 @@ const Concentrates = () => {
     if (!shouldCreate) return;
 
     try {
-      const formData = new FormData();
-      formData.append('productType', selectedType);
-      formData.append('brand', brand || '');
-      formData.append('weight', weight);
-      formData.append('price', price);
-      formData.append('description', description || '');
-      if (imageFile) formData.append('image', imageFile);
-
-      const response = await createMutation.mutateAsync(formData);
+      const response = await createMutation.mutateAsync({
+        productType: selectedType,
+        brand: brand || '',
+        weight,
+        price,
+        description: description || '',
+      });
       const base = response?.product;
       if (!base?._id) {
         throw new Error('Failed to create concentrate base.');
       }
 
-      const payloads = flavors.map((flavor, index) => ({
-        baseId: base._id,
-        data: {
-          strain: flavor.name.trim(),
-          strainType: flavor.strainType || 'hybrid-s',
-          sortOrder: index,
-        },
-      }));
+      const payloads = flavors.map((flavor, index) => {
+        if (flavor.imageFile) {
+          const fd = new FormData();
+          fd.append('strain', flavor.name.trim());
+          fd.append('strainType', flavor.strainType || 'hybrid-s');
+          fd.append('sortOrder', index);
+          fd.append('image', flavor.imageFile);
+          return { baseId: base._id, data: fd };
+        }
+        return {
+          baseId: base._id,
+          data: {
+            strain: flavor.name.trim(),
+            strainType: flavor.strainType || 'hybrid-s',
+            sortOrder: index,
+          },
+        };
+      });
 
       await Promise.all(payloads.map((payload) => addStrainMutation.mutateAsync(payload)));
 
@@ -392,12 +405,10 @@ const Concentrates = () => {
     }
 
     try {
-      const formData = new FormData();
-      formData.append('price', editFields.price || '');
-      if (imageFile) {
-        formData.append('image', imageFile);
-      }
-      await updateMutation.mutateAsync({ id: editingProduct._id, data: formData });
+      await updateMutation.mutateAsync({
+        id: editingProduct._id,
+        data: { price: editFields.price || '' },
+      });
       await Promise.all(
         trimmedFlavors.map((flavor) =>
           updateStrainMutation.mutateAsync({
@@ -587,6 +598,7 @@ const Concentrates = () => {
                               <Badge colorScheme={strain.isActive ? 'green' : 'red'}>
                                 {strain.isActive ? 'Active' : 'Inactive'}
                               </Badge>
+                              {strain.image ? <FiCheck color="green" /> : null}
                               <Text>{strain.strain}</Text>
                             </HStack>
                             <Switch
@@ -656,33 +668,6 @@ const Concentrates = () => {
 
               {addStep === 2 && (
                 <VStack spacing={4} align="stretch">
-                  <Box w="100%" textAlign="center">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      display="none"
-                    />
-                    {imagePreview ? (
-                      <Box position="relative" display="inline-block">
-                        <Image src={imagePreview} maxH="200px" borderRadius="lg" />
-                        <IconButton
-                          icon={<FiCamera />}
-                          position="absolute"
-                          bottom={2}
-                          right={2}
-                          onClick={() => fileInputRef.current.click()}
-                          aria-label="Change image"
-                        />
-                      </Box>
-                    ) : (
-                      <Button leftIcon={<FiUpload />} onClick={() => fileInputRef.current.click()}>
-                        Upload Image (optional)
-                      </Button>
-                    )}
-                  </Box>
-
                   <FormControl>
                     <FormLabel>Brand (optional)</FormLabel>
                     <Input value={brand} onChange={(e) => setBrand(e.target.value)} />
@@ -761,6 +746,33 @@ const Concentrates = () => {
                           ))}
                         </Select>
                       </FormControl>
+                      <HStack mt={3} align="center">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          ref={(el) => { flavorFileRefs.current[index] = el; }}
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              const next = [...flavors];
+                              next[index] = { ...next[index], imageFile: file };
+                              setFlavors(next);
+                            }
+                          }}
+                        />
+                        <IconButton
+                          icon={flavor.imageFile ? <FiCheck /> : <FiImage />}
+                          size="sm"
+                          variant="ghost"
+                          colorScheme={flavor.imageFile ? 'green' : 'gray'}
+                          aria-label="Add flavor image"
+                          onClick={() => flavorFileRefs.current[index]?.click()}
+                        />
+                        <Text fontSize="xs" color="gray.500">
+                          {flavor.imageFile ? flavor.imageFile.name : 'Image (optional)'}
+                        </Text>
+                      </HStack>
                     </Box>
                   ))}
                 </VStack>
@@ -775,11 +787,6 @@ const Concentrates = () => {
                     overflow="hidden"
                     bg={colorMode === 'dark' ? 'gray.700' : 'white'}
                   >
-                    {imagePreview ? (
-                      <Image src={imagePreview} alt="preview" h="160px" w="100%" objectFit="cover" />
-                    ) : (
-                      <Box h="160px" bg={colorMode === 'dark' ? 'gray.600' : 'gray.100'} />
-                    )}
                     <VStack align="start" spacing={2} p={4}>
                       <Text fontWeight="bold">
                         {brand ? `${brand} - ` : ''}{selectedType || 'Concentrate'}
@@ -861,33 +868,6 @@ const Concentrates = () => {
           <form onSubmit={handleUpdate}>
             <ModalBody>
               <VStack spacing={4} align="stretch">
-                <Box w="100%" textAlign="center">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={handleImageChange}
-                    display="none"
-                  />
-                  {imagePreview ? (
-                    <Box position="relative" display="inline-block">
-                      <Image src={imagePreview} maxH="200px" borderRadius="lg" />
-                      <IconButton
-                        icon={<FiUpload />}
-                        position="absolute"
-                        bottom={2}
-                        right={2}
-                        onClick={() => fileInputRef.current.click()}
-                        aria-label="Change image"
-                        size="sm"
-                      />
-                    </Box>
-                  ) : (
-                    <Button leftIcon={<FiUpload />} onClick={() => fileInputRef.current.click()}>
-                      Upload Image
-                    </Button>
-                  )}
-                </Box>
                 <VStack align="start" spacing={1}>
                   <Text fontSize="sm" color="gray.500">Brand</Text>
                   <Text fontWeight="semibold">{editFields.brand || '—'}</Text>
@@ -974,6 +954,27 @@ const Concentrates = () => {
                                   ))}
                                 </Select>
                               </FormControl>
+                              <HStack spacing={2}>
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  display="none"
+                                  data-strain-id={flavor._id}
+                                  ref={(el) => { flavorFileRefs.current[flavor._id] = el; }}
+                                  onChange={handleImageChange}
+                                />
+                                <IconButton
+                                  icon={flavor.image ? <FiCheck /> : <FiImage />}
+                                  size="sm"
+                                  variant="ghost"
+                                  colorScheme={flavor.image ? 'green' : 'gray'}
+                                  aria-label="Change flavor image"
+                                  onClick={() => flavorFileRefs.current[flavor._id]?.click()}
+                                />
+                                <Text fontSize="xs" color="gray.500">
+                                  {flavor.image ? 'Has image' : 'No image'}
+                                </Text>
+                              </HStack>
                             </VStack>
                             <IconButton
                               icon={<FiTrash2 />}

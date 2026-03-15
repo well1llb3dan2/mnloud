@@ -40,7 +40,7 @@ const BottomNavItem = ({ icon, label, path, badge }) => {
     <VStack
       spacing={1}
       cursor="pointer"
-      onClick={() => navigate(path)}
+      onClick={() => navigate(path, { replace: true })}
       color={isActive ? 'purple.400' : 'gray.400'}
       transition="all 0.2s"
       position="relative"
@@ -177,7 +177,11 @@ const Layout = () => {
               icon={<FiChevronLeft size={24} />}
               variant="ghost"
               size="sm"
-              onClick={() => navigate(-1)}
+              onClick={() => {
+                const segs = location.pathname.split('/').filter(Boolean);
+                if (segs.length >= 2) navigate(`/${segs[0]}`, { replace: true });
+                else navigate('/', { replace: true });
+              }}
               aria-label="Go back"
             />
           </HStack>

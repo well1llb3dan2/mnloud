@@ -33,7 +33,7 @@ import {
   AccordionButton,
   AccordionPanel,
 } from '@chakra-ui/react';
-import { FiPlus, FiEdit2, FiTrash2, FiCamera, FiUpload } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiCamera, FiUpload, FiImage } from 'react-icons/fi';
 import { useForm } from 'react-hook-form';
 import { productService, priceTierService } from '../../services';
 import { useOverlayStack } from '../../context';
@@ -1122,6 +1122,11 @@ const Flowers = () => {
                           Pre-Pack
                         </Badge>
                       )}
+                      <FiImage
+                        size={14}
+                        color={product.image || product.imageUrl ? '#38A169' : '#A0AEC0'}
+                        style={{ flexShrink: 0 }}
+                      />
                     </HStack>
                   </Box>
                   <Box

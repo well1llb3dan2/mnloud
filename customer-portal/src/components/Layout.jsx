@@ -21,7 +21,7 @@ const NavItem = ({ icon, label, path, badge }) => {
     <button
       type="button"
       className={`nav-item${isActive ? ' active' : ''}`}
-      onClick={() => navigate(path)}
+      onClick={() => navigate(path, { replace: true })}
     >
       <span style={{ position: 'relative' }}>
         <span className="nav-icon">{icon}</span>
@@ -134,7 +134,12 @@ const Layout = () => {
           <button
             type="button"
             className="top-bar-back"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              const segs = location.pathname.split('/').filter(Boolean);
+              if (segs[0] === 'products') navigate('/', { replace: true });
+              else if (segs.length >= 2) navigate(`/${segs[0]}`, { replace: true });
+              else navigate('/', { replace: true });
+            }}
             aria-label="Go back"
           >
             <FiChevronLeft size={24} />

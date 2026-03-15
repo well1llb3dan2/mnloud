@@ -90,7 +90,7 @@ const flowerSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Concentrate product base (shared image across strains)
+// Concentrate product base
 const concentrateBaseSchema = new mongoose.Schema({
   ...baseProductFields,
   brand: {
@@ -132,6 +132,9 @@ const concentrateStrainSchema = new mongoose.Schema({
     type: String,
     enum: ['sativa', 'indica', 'hybrid', 'hybrid-s', 'hybrid-i'],
     required: true,
+  },
+  image: {
+    type: String,
   },
   thcPercentage: {
     type: Number,
@@ -231,6 +234,9 @@ const edibleVariantSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
+  },
+  image: {
+    type: String,
   },
   isActive: {
     type: Boolean,

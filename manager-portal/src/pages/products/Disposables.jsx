@@ -37,7 +37,7 @@ import {
   Divider,
   Checkbox,
 } from '@chakra-ui/react';
-import { FiPlus, FiEdit2, FiCamera, FiUpload, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiCamera, FiUpload, FiTrash2, FiImage } from 'react-icons/fi';
 import { useConfirmDialog } from '../../components/ConfirmDialog';
 import { useOverlayStack } from '../../context';
 import { productService } from '../../services';
@@ -85,7 +85,7 @@ const Disposables = () => {
   const [newFlavorType2, setNewFlavorType2] = useState('hybrid-s');
   const [isAddFlavorOpen, setIsAddFlavorOpen] = useState(false);
   const { confirm, ConfirmDialog } = useConfirmDialog();
-  const { registerBackAction, unregisterBackAction } = useOverlayStack();
+  const { registerBackAction, unregisterBackAction, register: registerOverlay, unregister: unregisterOverlay } = useOverlayStack();
 
   useEffect(() => {
     if (!isOpen || editingProduct || addStep <= 1) return;
@@ -93,6 +93,20 @@ const Disposables = () => {
     registerBackAction(handleStepBack);
     return () => unregisterBackAction(handleStepBack);
   }, [isOpen, editingProduct, addStep, registerBackAction, unregisterBackAction]);
+
+  useEffect(() => {
+    if (!isEditOpen) return;
+    const closeFn = () => {
+      if (window.confirm('Discard unsaved changes?')) {
+        onEditClose();
+        setEditingProduct(null);
+        return undefined;
+      }
+      return false;
+    };
+    registerOverlay(closeFn);
+    return () => unregisterOverlay(closeFn);
+  }, [isEditOpen, onEditClose, registerOverlay, unregisterOverlay]);
 
   const [editFields, setEditFields] = useState({
     brand: '',
@@ -486,6 +500,11 @@ const Disposables = () => {
                       <Badge colorScheme={product.isActive ? 'green' : 'red'}>
                         {product.isActive ? 'Active' : 'Inactive'}
                       </Badge>
+                      <FiImage
+                        size={14}
+                        color={product.image || product.imageUrl ? '#38A169' : '#A0AEC0'}
+                        style={{ flexShrink: 0 }}
+                      />
                     </HStack>
                   </Box>
                   <Box
@@ -621,7 +640,7 @@ const Disposables = () => {
                   </Box>
 
                   <FormControl>
-                    <FormLabel>Brand (optional)</FormLabel>
+                    <FormLabel>Brand</FormLabel>
                     <Input value={brand} onChange={(e) => setBrand(e.target.value)} />
                   </FormControl>
                   <Checkbox

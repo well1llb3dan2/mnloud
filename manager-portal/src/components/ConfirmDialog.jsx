@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogBody,
@@ -9,6 +9,7 @@ import {
   Button,
   Text,
 } from '@chakra-ui/react';
+import { useOverlayStack } from '../context';
 
 export const useConfirmDialog = () => {
   const cancelRef = useRef();
@@ -42,6 +43,15 @@ export const useConfirmDialog = () => {
     }
     setDialogState((prev) => ({ ...prev, isOpen: false }));
   }, []);
+
+  const { register: registerOverlay, unregister: unregisterOverlay } = useOverlayStack();
+
+  useEffect(() => {
+    if (dialogState.isOpen) {
+      registerOverlay(handleClose);
+      return () => unregisterOverlay(handleClose);
+    }
+  }, [dialogState.isOpen, handleClose, registerOverlay, unregisterOverlay]);
 
   const handleConfirm = useCallback(() => {
     if (resolverRef.current) {

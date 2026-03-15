@@ -92,6 +92,7 @@ export const useBackButton = () => {
   }, [hasOverlay, closeTop, location.pathname, navigate, toast]);
 
   useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [handlePopState]);

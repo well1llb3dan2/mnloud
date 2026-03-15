@@ -1,0 +1,373 @@
+MANAGER PORTAL — PAGE / MODAL / POPUP FLOW
+=============================================
+
+GLOBAL INFRASTRUCTURE
+─────────────────────
+  OverlayStackProvider (wraps entire app)
+  └── useBackButton hook (global)
+      ├── If overlay/step open → close top overlay or step back
+      ├── "/" (dashboard) → double-tap to exit
+      ├── Sub-pages → navigate to parent
+      └── /chats/:id → navigate to /chats
+
+  ConfirmDialog (reusable hook: useConfirmDialog)
+  ├── Returns Promise<boolean>
+  ├── Renders: backdrop + modal with title, message, confirm/cancel
+  └── Used throughout for delete/status-change confirmations
+
+  Toast (Chakra useToast, used on every page)
+
+
+LAYOUT (wraps all protected routes)
+────────────────────────────────────
+  ┌─ Sidebar / Top nav (responsive)
+  │   ├── Dashboard    → /
+  │   ├── Products     → /products
+  │   ├── Price Tiers  → /price-tiers
+  │   ├── Orders       → /orders  [badge: pending count]
+  │   ├── Chats        → /chats   [badge: unread count]
+  │   ├── Invites      → /invites
+  │   ├── Users        → /users
+  │   └── Profile      → /profile
+  │
+  └─ main: <Outlet /> (scrollable content)
+
+
+PUBLIC ROUTES
+─────────────
+  /login → Login page (no modals, toast on error)
+
+
+PROTECTED ROUTES
+────────────────
+
+/ — Dashboard
+├── No modals
+├── Summary cards: pending orders, active products, unread chats
+└── Quick action links
+
+
+/products — Products (category navigation)
+├── No modals
+└── Category cards navigate to /products/:type
+
+
+/products/flower — Flowers
+├── MODAL: Add/Edit Flower (size="full")
+│   │
+│   ├── CREATE MODE — 3-step wizard
+│   │   ├── Step 1: Strain Search
+│   │   │   ├── Text input for strain name
+│   │   │   ├── "Search" → AI strain matching API
+│   │   │   └── Back button: registered with overlayStack
+│   │   │
+│   │   ├── Step 2: Select Match
+│   │   │   ├── List of AI-matched strains
+│   │   │   ├── Click to select → auto-fills metadata
+│   │   │   └── Back button → Step 1
+│   │   │
+│   │   └── Step 3: Strain Details + Image + Price Tier
+│   │       ├── Pre-filled: strain, type, THC, effects, flavors,
+│   │       │               terpenes, may_relieve, lineage, description
+│   │       ├── Image upload (camera with canvas compression, 1200px max)
+│   │       ├── Price tier selector
+│   │       ├── "Create" button
+│   │       └── Back button → Step 2
+│   │
+│   ├── BATCH CREATE MODE — 4-step wizard
+│   │   ├── Step 1: Batch count (5–10)
+│   │   ├── Step 2: Enter strain names (text inputs)
+│   │   ├── Step 3: AI matching → select per strain
+│   │   └── Step 4: Review + assign price tiers
+│   │
+│   ├── EDIT MODE — single form
+│   │   ├── Image upload/change
+│   │   ├── Price tier selector
+│   │   └── "Save" button
+│   │
+│   └── Camera UI edge case:
+│       └── Pushes history state to catch popstate during camera
+│
+├── CONFIRM DIALOG: Delete flower
+│   ├── Trigger: delete icon on product accordion
+│   └── Message: "Delete [strain name]?"
+│
+├── Accordion list (per product):
+│   ├── Toggle active/inactive (Switch)
+│   ├── Edit button → opens Edit modal
+│   └── Delete button → opens Confirm
+│
+└── Toasts: create/update/delete success, AI errors
+
+
+/products/disposables — Disposables
+├── MODAL: Add Disposable (size="full") — 3-step wizard
+│   │
+│   ├── Step 1: Base Details
+│   │   ├── Brand (required)
+│   │   ├── Flavor count
+│   │   ├── Price
+│   │   ├── Weight/size
+│   │   ├── Description (optional)
+│   │   ├── Dual chamber toggle
+│   │   └── Back button: registered with overlayStack
+│   │
+│   ├── Step 2: Flavors
+│   │   ├── Per-flavor: name + strain type (+ second strain if dual)
+│   │   └── Back button → Step 1
+│   │
+│   └── Step 3: Preview
+│       ├── Summary of all entered data
+│       ├── "Create" button
+│       └── Back button → Step 2
+│
+├── MODAL: Edit Disposable (size="lg")
+│   ├── Read-only: brand, product type, weight
+│   ├── Editable: price
+│   ├── Flavor list with inline editing:
+│   │   ├── Per flavor: name, strain type, active toggle
+│   │   ├── Delete flavor → Confirm Dialog
+│   │   └── Add Flavor (inline expandable form)
+│   ├── "Save" button
+│   └── Dismiss: Cancel or close button
+│
+├── CONFIRM DIALOG: Delete flavor
+│   └── Message: "Delete [flavor name]?"
+│
+├── CONFIRM DIALOG: Delete product
+│   └── Message: "Delete [brand] Disposable?"
+│
+├── Accordion list (per product):
+│   ├── Toggle active/inactive (Switch)
+│   ├── Per-strain toggle active/inactive
+│   ├── Edit button → Edit modal
+│   └── Delete button → Confirm
+│
+└── Toasts: create/update/delete success/error
+
+
+/products/concentrates — Concentrates
+├── MODAL: Add Concentrate (size="full") — 4-step wizard
+│   │
+│   ├── Step 1: Concentrate Type
+│   │   ├── Select from existing types (button group)
+│   │   ├── Create new type (inline input + add button)
+│   │   ├── Remove type (select + delete with confirm)
+│   │   └── Back button: registered with overlayStack
+│   │
+│   ├── Step 2: Base Details
+│   │   ├── Brand
+│   │   ├── Flavor count
+│   │   ├── Weight/size
+│   │   ├── Price
+│   │   ├── Description (optional)
+│   │   └── Back button → Step 1
+│   │
+│   ├── Step 3: Flavors (with per-flavor image)
+│   │   ├── Per-flavor: name + strain type
+│   │   ├── Per-flavor: image upload (optional, icon button)
+│   │   │   └── Shows FiCheck if image attached, FiImage if not
+│   │   └── Back button → Step 2
+│   │
+│   └── Step 4: Preview
+│       ├── Summary of all data (no base image)
+│       ├── "Create" button
+│       └── Back button → Step 3
+│
+├── MODAL: Edit Concentrate (size="lg")
+│   ├── Read-only: brand, concentrate type, weight/size
+│   ├── Editable: price
+│   ├── Flavor list with inline editing:
+│   │   ├── Per flavor: name, strain type, active toggle
+│   │   ├── Per flavor: image upload icon (FiImage/FiCheck)
+│   │   ├── Delete flavor → Confirm Dialog
+│   │   └── Add Flavor (inline expandable form)
+│   ├── "Save" button
+│   └── Dismiss: Cancel or close button
+│
+├── CONFIRM DIALOG: Delete flavor
+│   └── Message: "Delete [flavor name]?"
+│
+├── CONFIRM DIALOG: Delete product
+│   └── Message: "Delete [brand] [type]?"
+│
+├── CONFIRM DIALOG: Delete concentrate type
+│   └── Message: "Delete [type name]?"
+│
+├── Accordion list (per product):
+│   ├── Toggle active/inactive (Switch)
+│   ├── Per-strain: name, type badge, image indicator, active toggle
+│   ├── Edit button → Edit modal
+│   └── Delete button → Confirm
+│
+└── Toasts: create/update/delete success/error, type management
+
+
+/products/edibles — Edibles
+├── MODAL: Add/Edit Edible (size="full")
+│   │
+│   ├── CREATE MODE — single form
+│   │   ├── Brand (optional)
+│   │   ├── Edible Type (button group, required)
+│   │   │   ├── Select from existing types
+│   │   │   ├── Create new type (inline)
+│   │   │   └── Remove type (with confirm)
+│   │   ├── THC Content / Weight
+│   │   ├── Variant count → generates variant name inputs
+│   │   ├── Variant names
+│   │   ├── Price
+│   │   ├── Description (optional)
+│   │   └── "Create" button
+│   │
+│   └── EDIT MODE — single form
+│       ├── Read-only: brand, THC content, description
+│       ├── Variant list:
+│       │   ├── Per variant: image upload icon (FiImage/FiCheck)
+│       │   ├── Per variant: active toggle
+│       │   └── Add/delete variant (inline)
+│       ├── Edible type (button group, editable)
+│       ├── Price (editable)
+│       └── "Save" button
+│
+├── CONFIRM DIALOG: Delete variant
+│   └── Message: "Delete [variant name]?"
+│
+├── CONFIRM DIALOG: Delete product
+│   └── Message: "Delete [name]?"
+│
+├── CONFIRM DIALOG: Delete edible type
+│   └── Message: "Delete [type name]?"
+│
+├── Accordion list (per product):
+│   ├── Toggle active/inactive (Switch)
+│   ├── Per-variant: name, image indicator, active toggle
+│   ├── Edit button → Edit modal
+│   └── Delete button → Confirm
+│
+└── Toasts: create/update/delete success/error
+
+
+/price-tiers — Price Tiers
+├── MODAL: Add/Edit Price Tier
+│   ├── Tier name
+│   ├── Dynamic price points: quantity (g) + price ($)
+│   ├── Add/remove price points
+│   └── "Create" / "Save" button
+│
+├── CONFIRM DIALOG: Delete tier
+│   └── Message: "Delete [tier name]?"
+│
+└── Toasts: create/update/delete
+
+
+/orders — Orders
+├── No modals (uses expandable <details>)
+│
+├── Status filter tabs: All / Pending / Completed / Cancelled
+│
+├── Per-order expandable:
+│   ├── Summary: customer name, date, total, status badge
+│   ├── Expanded: items grouped by category
+│   │   └── Per item: name, strain/variant, qty, price
+│   ├── Bulk discount line (if applicable)
+│   └── Action buttons:
+│       ├── Mark Complete → CONFIRM DIALOG
+│       ├── Cancel Order  → CONFIRM DIALOG
+│       └── Reopen        → CONFIRM DIALOG (completed/cancelled only)
+│
+├── CONFIRM DIALOG: Mark Complete
+│   └── Message: "Mark order as completed?"
+│
+├── CONFIRM DIALOG: Cancel Order
+│   └── Message: "Cancel this order?"
+│
+├── CONFIRM DIALOG: Reopen Order
+│   └── Message: "Reopen this order?"
+│
+└── Toasts: status change success/error
+
+
+/orders/archive — Archived Orders
+├── Same structure as /orders but read-only
+└── No action buttons
+
+
+/chats — Chat List
+├── No modals
+├── Conversation list with:
+│   ├── Customer name
+│   ├── Last message preview
+│   ├── Unread badge
+│   └── Click → navigate to /chats/:conversationId
+└── Toasts: none
+
+
+/chats/:conversationId — Chat Detail
+├── Fixed layout:
+│   ├── Top: customer name bar
+│   ├── Middle: message list (scrollable)
+│   └── Bottom: text input + send button
+│
+├── Message types:
+│   ├── Text message
+│   ├── Image message
+│   └── Order card (clickable → navigates to /orders with auto-expand)
+│
+├── CONFIRM DIALOG: Cancel Order (from order card)
+│   └── Message: "Cancel this order?"
+│
+├── Features:
+│   ├── Auto-scroll to latest
+│   ├── Load more on scroll up (15 per page)
+│   ├── Typing indicator
+│   ├── E2E encryption (public key encrypt/decrypt)
+│   └── Image sending
+│
+└── Toasts: error on send failure
+
+
+/invites — Invites
+├── MODAL: QR Code
+│   ├── Trigger: "Create Invite" button (auto-opens after creation)
+│   ├── Content: QR code image + invite code text + instructions
+│   ├── Registered with overlayStack for back button
+│   └── Dismiss: Close button
+│
+├── CONFIRM DIALOG: Delete invite
+│   └── Message: "Delete this invite?"
+│
+├── Invite list:
+│   ├── Code, status (pending/used), created date
+│   └── Delete button → Confirm
+│
+└── Toasts: create/delete success/error
+
+
+/users — Users
+├── Tab interface: Customers | Managers
+│
+├── Customer tab:
+│   ├── User list with name, email, joined date
+│   └── Mute/unmute toggle per user
+│
+├── Manager tab:
+│   ├── User list with name, email, role
+│   └── No actions (view only)
+│
+├── No modals
+└── Toasts: mute/unmute success
+
+
+/profile — Profile
+├── MODAL: Change Password
+│   ├── Trigger: "Change Password" button
+│   ├── Fields: Current Password, New Password
+│   ├── Actions: Cancel / Change Password
+│   └── On submit: update → success toast → close
+│
+├── Inline actions:
+│   ├── Update display name
+│   ├── Mute/Unmute notifications
+│   └── Sign Out
+│
+└── Toasts: update success/error

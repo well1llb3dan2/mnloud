@@ -7,6 +7,7 @@ import { useSocket } from '../context/SocketContext';
 import { chatService, productService } from '../services';
 import { useToast } from '../components/ToastProvider';
 import { optimizeFlowerPricing, buildPriceTierMap } from '../utils/tierOptimizer';
+import { useOverlayStack } from '../context';
 
 const strainTypeLabel = (st) => {
   if (!st) return '';
@@ -126,6 +127,23 @@ const Cart = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [unavailableModal, setUnavailableModal] = useState(null);
+  const { register: registerOverlay, unregister: unregisterOverlay } = useOverlayStack();
+
+  useEffect(() => {
+    if (isConfirmOpen) {
+      const closeFn = () => setIsConfirmOpen(false);
+      registerOverlay(closeFn);
+      return () => unregisterOverlay(closeFn);
+    }
+  }, [isConfirmOpen, registerOverlay, unregisterOverlay]);
+
+  useEffect(() => {
+    if (unavailableModal) {
+      const closeFn = () => setUnavailableModal(null);
+      registerOverlay(closeFn);
+      return () => unregisterOverlay(closeFn);
+    }
+  }, [unavailableModal, registerOverlay, unregisterOverlay]);
 
   const { items, updateQuantity, removeItem, clearCart, getTotal, fetchCart, validateCart, isLoading } = useCartStore();
   const { setConversation } = useChatStore();

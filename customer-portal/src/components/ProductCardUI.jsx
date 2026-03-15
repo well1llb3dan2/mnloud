@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCartStore } from '../stores';
 import { useConfirmDialog } from './ConfirmDialog';
 import { useToast } from './ToastProvider';
+import { useOverlayStack } from '../context';
 
 const NO_IMAGE_URL = 'https://cdn.mnloud.com/uploads/noimage.png';
 
@@ -52,6 +53,23 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoRef = useRef(null);
   const loopCountRef = useRef(0);
+  const { register: registerOverlay, unregister: unregisterOverlay } = useOverlayStack();
+
+  useEffect(() => {
+    if (detailsOpen) {
+      const closeFn = () => setDetailsOpen(false);
+      registerOverlay(closeFn);
+      return () => unregisterOverlay(closeFn);
+    }
+  }, [detailsOpen, registerOverlay, unregisterOverlay]);
+
+  useEffect(() => {
+    if (imageOpen) {
+      const closeFn = () => setImageOpen(false);
+      registerOverlay(closeFn);
+      return () => unregisterOverlay(closeFn);
+    }
+  }, [imageOpen, registerOverlay, unregisterOverlay]);
 
   const imageUrl = product.imageUrl || getImageUrl(product.image);
   const videoUrl = product.videoUrl || getVideoUrl(product.video);
@@ -67,6 +85,33 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
   const selectedVariant = activeVariants.find((variant) => variant._id === selectedVariantId)
     || activeVariants[0]
     || null;
+
+  // Whether this product type uses a per-variant image carousel
+  const useCarousel = (type === 'edible' && activeVariants.length > 0)
+    || (type === 'concentrate' && activeStrains.length > 0);
+  const carouselItems = type === 'edible'
+    ? activeVariants.map((v) => ({ _id: v._id, label: v.name, image: v.imageUrl || getImageUrl(v.image) }))
+    : type === 'concentrate'
+      ? activeStrains.map((s) => ({ _id: s._id, label: s.strain2 ? `${s.strain} / ${s.strain2}` : s.strain, image: s.imageUrl || getImageUrl(s.image) }))
+      : [];
+
+  const carouselRef = useRef(null);
+
+  const handleCarouselScroll = useCallback(() => {
+    const el = carouselRef.current;
+    if (!el || carouselItems.length === 0) return;
+    const scrollLeft = el.scrollLeft;
+    const itemWidth = el.firstElementChild?.offsetWidth || 1;
+    const centerIndex = Math.round(scrollLeft / itemWidth);
+    const clamped = Math.max(0, Math.min(centerIndex, carouselItems.length - 1));
+    const item = carouselItems[clamped];
+    if (!item) return;
+    if (type === 'edible' && item._id !== selectedVariantId) {
+      setSelectedVariantId(item._id);
+    } else if (type === 'concentrate' && item._id !== selectedStrainId) {
+      setSelectedStrainId(item._id);
+    }
+  }, [carouselItems, selectedVariantId, selectedStrainId, type]);
 
   useEffect(() => {
     if (!selectedStrainId && activeStrains.length > 0) {
@@ -293,21 +338,24 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
             Details
           </button>
 
-          <select
-            className="select"
-            value={activeTier?.quantity ?? ''}
-            onChange={(e) => {
-              const quantity = Number(e.target.value);
-              const nextTier = prices.find((pricePoint) => pricePoint.quantity === quantity) || null;
-              setSelectedBulkTier(nextTier);
-            }}
-          >
-            {prices.map((pricePoint) => (
-              <option key={pricePoint.quantity} value={pricePoint.quantity}>
-                {pricePoint.quantity}g — ${pricePoint.price}
-              </option>
-            ))}
-          </select>
+          <div>
+            <div className="select-label">Select weight</div>
+            <select
+              className="select"
+              value={activeTier?.quantity ?? ''}
+              onChange={(e) => {
+                const quantity = Number(e.target.value);
+                const nextTier = prices.find((pricePoint) => pricePoint.quantity === quantity) || null;
+                setSelectedBulkTier(nextTier);
+              }}
+            >
+              {prices.map((pricePoint) => (
+                <option key={pricePoint.quantity} value={pricePoint.quantity}>
+                  {pricePoint.quantity}g — ${pricePoint.price}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <button
             type="button"
@@ -413,48 +461,98 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
   // ── Non-flower card (concentrate, disposable, edible) ──
   return (
     <div className="card">
-      <div style={{ cursor: 'pointer' }} onClick={() => setDetailsOpen(true)}>
-        {videoUrl ? (
-          <div className="media-thumb">
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              poster={imageUrl}
-              muted
-              playsInline
-              preload="metadata"
-              onEnded={handleVideoEnded}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isVideoPlaying) {
-                  handleVideoStop();
-                }
-              }}
-            />
-            {!isVideoPlaying && (
-              <button
-                type="button"
-                className="video-overlay"
+      {useCarousel ? (
+        /* ── Per-variant image carousel (edible / concentrate) ── */
+        <>
+          <div
+            className="carousel"
+            ref={carouselRef}
+            onScroll={handleCarouselScroll}
+          >
+            {carouselItems.map((item) => (
+              <div className="carousel-slide" key={item._id}>
+                <img
+                  src={item.image}
+                  alt={item.label}
+                  style={{ width: '100%', borderRadius: 12, objectFit: 'cover', aspectRatio: '1 / 1', display: 'block' }}
+                />
+                <div className="carousel-label">{item.label}</div>
+              </div>
+            ))}
+          </div>
+          {carouselItems.length > 1 && (
+            <div className="carousel-hint">
+              <span>← swipe to browse →</span>
+            </div>
+          )}
+          {carouselItems.length > 1 && (
+            <div className="carousel-dots">
+              {carouselItems.map((item) => {
+                const isActive = type === 'edible'
+                  ? item._id === (selectedVariant?._id || activeVariants[0]?._id)
+                  : item._id === (selectedStrain?._id || activeStrains[0]?._id);
+                return (
+                  <span
+                    key={item._id}
+                    className={`carousel-dot${isActive ? ' active' : ''}`}
+                    onClick={() => {
+                      const idx = carouselItems.findIndex((ci) => ci._id === item._id);
+                      const el = carouselRef.current;
+                      if (el && el.children[idx]) {
+                        el.children[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        /* ── Single image (disposable, or products without variants) ── */
+        <div style={{ cursor: 'pointer' }} onClick={() => setDetailsOpen(true)}>
+          {videoUrl ? (
+            <div className="media-thumb">
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                poster={imageUrl}
+                muted
+                playsInline
+                preload="metadata"
+                onEnded={handleVideoEnded}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleVideoStart();
+                  if (isVideoPlaying) {
+                    handleVideoStop();
+                  }
                 }}
-              >
-                <span className="video-overlay-content">
-                  <span className="video-play-icon" aria-hidden="true" />
-                  <span>Tap to play</span>
-                </span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <img
-            src={imageUrl}
-            alt={product.name || product.strain}
-            style={{ width: '100%', borderRadius: 12, objectFit: 'cover', aspectRatio: '1 / 1' }}
-          />
-        )}
-      </div>
+              />
+              {!isVideoPlaying && (
+                <button
+                  type="button"
+                  className="video-overlay"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleVideoStart();
+                  }}
+                >
+                  <span className="video-overlay-content">
+                    <span className="video-play-icon" aria-hidden="true" />
+                    <span>Tap to play</span>
+                  </span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <img
+              src={imageUrl}
+              alt={product.name || product.strain}
+              style={{ width: '100%', borderRadius: 12, objectFit: 'cover', aspectRatio: '1 / 1' }}
+            />
+          )}
+        </div>
+      )}
 
       <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
         {categoryLabel ? <small style={{ opacity: 0.7 }}>{categoryLabel}</small> : null}
@@ -465,47 +563,39 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
         {product.weight ? <div>Weight: {product.weight}</div> : null}
         {product.price ? <div>${product.price}</div> : null}
 
-        {(type === 'concentrate' || type === 'disposable') && activeStrains.length > 0 && (
+        {type === 'disposable' && activeStrains.length > 0 && (
+          <div>
+            <div className="select-label">Choose flavor</div>
+            <select
+              className="select"
+              value={selectedStrain?._id || ''}
+              onChange={(e) => setSelectedStrainId(e.target.value)}
+            >
+              {activeStrains.map((strain) => (
+                <option key={strain._id} value={strain._id}>
+                  {strain.strain2
+                    ? `${strain.strain} / ${strain.strain2}`
+                    : strain.strain}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <div className="select-label">Quantity</div>
           <select
             className="select"
-            value={selectedStrain?._id || ''}
-            onChange={(e) => setSelectedStrainId(e.target.value)}
+            value={selectedQuantity}
+            onChange={(e) => setSelectedQuantity(Number(e.target.value))}
           >
-            {activeStrains.map((strain) => (
-              <option key={strain._id} value={strain._id}>
-                {strain.strain2
-                  ? `${strain.strain} / ${strain.strain2}`
-                  : strain.strain}
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((qty) => (
+              <option key={qty} value={qty}>
+                Qty: {qty}
               </option>
             ))}
           </select>
-        )}
-
-        {type === 'edible' && activeVariants.length > 0 && (
-          <select
-            className="select"
-            value={selectedVariant?._id || ''}
-            onChange={(e) => setSelectedVariantId(e.target.value)}
-          >
-            {activeVariants.map((variant) => (
-              <option key={variant._id} value={variant._id}>
-                {variant.name}
-              </option>
-            ))}
-          </select>
-        )}
-
-        <select
-          className="select"
-          value={selectedQuantity}
-          onChange={(e) => setSelectedQuantity(Number(e.target.value))}
-        >
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((qty) => (
-            <option key={qty} value={qty}>
-              Qty: {qty}
-            </option>
-          ))}
-        </select>
+        </div>
 
         <button
           type="button"
@@ -536,7 +626,7 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
               Close
             </button>
           </div>
-          {videoUrl ? (
+          {!useCarousel && videoUrl ? (
             <div className="media-thumb" onClick={() => setImageOpen(true)}>
               <img
                 src={imageUrl}
@@ -552,14 +642,14 @@ const ProductCardUI = ({ product, type, categoryLabel }) => {
                 </div>
               )}
             </div>
-          ) : (
+          ) : !useCarousel ? (
             <img
               src={imageUrl}
               alt={product.name || product.strain}
               style={{ width: '100%', borderRadius: 12, objectFit: 'cover' }}
               onClick={() => setImageOpen(true)}
             />
-          )}
+          ) : null}}
           {product.description ? <p>{product.description}</p> : null}
           {(type === 'concentrate' || type === 'disposable') && activeStrains.length > 0 ? (
             <div>

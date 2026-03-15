@@ -161,17 +161,13 @@ export const productService = {
     return response.data;
   },
 
-  createConcentrateBase: async (formData) => {
-    const response = await api.post('/products/concentrates', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  createConcentrateBase: async (data) => {
+    const response = await api.post('/products/concentrates', data);
     return response.data;
   },
 
-  updateConcentrateBase: async (id, formData) => {
-    const response = await api.patch(`/products/concentrates/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  updateConcentrateBase: async (id, data) => {
+    const response = await api.patch(`/products/concentrates/${id}`, data);
     return response.data;
   },
 
@@ -181,12 +177,16 @@ export const productService = {
   },
 
   addConcentrateStrain: async (baseId, data) => {
-    const response = await api.post(`/products/concentrates/${baseId}/strains`, data);
+    const response = await api.post(`/products/concentrates/${baseId}/strains`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
     return response.data;
   },
 
   updateConcentrateStrain: async (strainId, data) => {
-    const response = await api.patch(`/products/concentrates/strains/${strainId}`, data);
+    const response = await api.patch(`/products/concentrates/strains/${strainId}`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
     return response.data;
   },
 
@@ -256,17 +256,13 @@ export const productService = {
     return response.data;
   },
 
-  createEdible: async (formData) => {
-    const response = await api.post('/products/edibles', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  createEdible: async (data) => {
+    const response = await api.post('/products/edibles', data);
     return response.data;
   },
 
-  updateEdible: async (id, formData) => {
-    const response = await api.patch(`/products/edibles/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  updateEdible: async (id, data) => {
+    const response = await api.patch(`/products/edibles/${id}`, data);
     return response.data;
   },
 
@@ -276,12 +272,16 @@ export const productService = {
   },
 
   addEdibleVariant: async (edibleId, data) => {
-    const response = await api.post(`/products/edibles/${edibleId}/variants`, data);
+    const response = await api.post(`/products/edibles/${edibleId}/variants`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
     return response.data;
   },
 
   updateEdibleVariant: async (variantId, data) => {
-    const response = await api.patch(`/products/edibles/variants/${variantId}`, data);
+    const response = await api.patch(`/products/edibles/variants/${variantId}`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
     return response.data;
   },
 

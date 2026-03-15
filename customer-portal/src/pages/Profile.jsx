@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiLogOut, FiLock, FiUser, FiBellOff, FiBell } from 'react-icons/fi';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '../stores';
 import { authService } from '../services';
 import { useToast } from '../components/ToastProvider';
+import { useOverlayStack } from '../context';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -12,6 +13,15 @@ const Profile = () => {
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const { register: registerOverlay, unregister: unregisterOverlay } = useOverlayStack();
+
+  useEffect(() => {
+    if (isPasswordOpen) {
+      const closeFn = () => setIsPasswordOpen(false);
+      registerOverlay(closeFn);
+      return () => unregisterOverlay(closeFn);
+    }
+  }, [isPasswordOpen, registerOverlay, unregisterOverlay]);
 
   const { user, logout, updateUser } = useAuthStore();
   const [isMuting, setIsMuting] = useState(false);

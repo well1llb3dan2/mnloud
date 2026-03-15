@@ -96,14 +96,9 @@ function App() {
         if (!version) return;
         const previous = localStorage.getItem(storageKey);
         if (previous && previous !== version && isMounted) {
-          toast({
-            title: 'Update available',
-            description: 'A new version of the portal is available. Refresh to update.',
-            status: 'info',
-            duration: null,
-            isClosable: true,
-            position: 'top',
-          });
+          localStorage.setItem(storageKey, version);
+          window.location.reload();
+          return;
         }
         localStorage.setItem(storageKey, version);
       } catch (error) {

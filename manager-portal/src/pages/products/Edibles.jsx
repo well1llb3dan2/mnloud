@@ -27,36 +27,29 @@ import {
   ModalCloseButton,
   useDisclosure,
   Badge,
-  Image,
   Accordion,
   AccordionItem,
   AccordionButton,
   AccordionPanel,
 } from '@chakra-ui/react';
-import { FiPlus, FiEdit2, FiTrash2, FiCamera, FiUpload } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiImage, FiCheck } from 'react-icons/fi';
 import { useForm } from 'react-hook-form';
 import { productService } from '../../services';
 import { useOverlayStack } from '../../context';
 import { useConfirmDialog } from '../../components/ConfirmDialog';
 
-const NO_IMAGE_URL = 'https://cdn.mnloud.com/uploads/noimage.png';
-
 const resolveMediaUrl = (mediaUrl, mediaPath) => (
-  mediaUrl || (mediaPath ? `/uploads/${mediaPath.replace('uploads/', '')}` : NO_IMAGE_URL)
+  mediaUrl || (mediaPath ? `/uploads/${mediaPath.replace('uploads/', '')}` : null)
 );
 
 const Edibles = () => {
-  const { register, handleSubmit, reset, setValue, watch } = useForm();
+  const { register, handleSubmit, reset, setValue, watch } = useForm({ shouldUnregister: true });
   const navigate = useNavigate();
   const { colorMode } = useColorMode();
   const toast = useToast();
   const queryClient = useQueryClient();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [editingProduct, setEditingProduct] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const fileInputRef = useRef();
-  const cameraInputRef = useRef();
-  const compressedImageRef = useRef(null);
   const [variantCount, setVariantCount] = useState('1');
   const [variants, setVariants] = useState([{ name: '' }]);
   const [editVariants, setEditVariants] = useState([]);
@@ -64,6 +57,8 @@ const Edibles = () => {
   const [newTypeName, setNewTypeName] = useState('');
   const [typeToRemove, setTypeToRemove] = useState('');
   const { confirm, ConfirmDialog } = useConfirmDialog();
+  const variantFileRefs = useRef({});
+  const handleCloseRef = useRef(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['edibles'],
@@ -87,18 +82,34 @@ const Edibles = () => {
   }, [edibleTypes, currentEdibleType]);
 
   const handleClose = () => {
-    try { unregisterOverlay?.(handleClose); } catch (err) {}
     setEditingProduct(null);
-    setImagePreview(null);
-    compressedImageRef.current = null;
     setNewTypeName('');
     setTypeToRemove('');
     setVariantCount('1');
     setVariants([{ name: '' }]);
     setEditVariants([]);
+    variantFileRefs.current = {};
     reset();
     onClose();
   };
+
+  handleCloseRef.current = handleClose;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const isEditing = !!editingProduct;
+    const closeFn = isEditing
+      ? () => {
+          if (window.confirm('Discard unsaved changes?')) {
+            handleCloseRef.current();
+            return undefined;
+          }
+          return false;
+        }
+      : () => handleCloseRef.current();
+    registerOverlay?.(closeFn);
+    return () => unregisterOverlay?.(closeFn);
+  }, [isOpen, !!editingProduct, registerOverlay, unregisterOverlay]);
 
   useEffect(() => {
     if (!isOpen || editingProduct) return;
@@ -136,13 +147,6 @@ const Edibles = () => {
       toast({ title: 'Error', description: error.message, status: 'error' });
     },
   });
-
-  const markCameraOpen = () => {
-    try {
-      window.__ignoreNextPopState = true;
-      window.history.pushState(null, '', window.location.href);
-    } catch (err) {}
-  };
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data: payload }) => productService.updateEdible(id, payload),
@@ -217,9 +221,7 @@ const Edibles = () => {
     setValue('price', product.price || '');
     setValue('description', product.description || '');
     setEditVariants(product.variants || []);
-    if (product.image) {
-      setImagePreview(resolveMediaUrl(product.imageUrl, product.image));
-    }
+    variantFileRefs.current = {};
     onOpen();
   };
 
@@ -266,58 +268,17 @@ const Edibles = () => {
     await handleDeleteType(target);
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result);
-      reader.readAsDataURL(file);
-      compressedImageRef.current = null;
-    }
-  };
-
-  const handleCameraChange = async (e) => {
+  const handleVariantImageUpload = async (variant) => {
+    const fileInput = variantFileRefs.current[variant._id];
+    const file = fileInput?.files?.[0];
+    if (!file || !variant._id) return;
     try {
-      window.__lastCameraAccept = Date.now();
-      window.__ignoreNextPopState = true;
-      window.history.pushState(null, '', window.location.href);
-    } catch (err) {}
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const imgBitmap = await createImageBitmap(file);
-        const maxWidth = 1200;
-        const ratio = imgBitmap.height / imgBitmap.width;
-        const canvas = document.createElement('canvas');
-        const width = Math.min(imgBitmap.width, maxWidth);
-        canvas.width = width;
-        canvas.height = Math.round(width * ratio);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(imgBitmap, 0, 0, canvas.width, canvas.height);
-
-        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-        if (blob) {
-          const compressedFile = new File([blob], file.name || 'photo.jpg', { type: 'image/jpeg' });
-          compressedImageRef.current = compressedFile;
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setImagePreview(reader.result);
-            try { window.__lastCameraAccept = Date.now(); } catch (err) {}
-          };
-          reader.readAsDataURL(compressedFile);
-        } else {
-          const reader = new FileReader();
-          reader.onloadend = () => setImagePreview(reader.result);
-          reader.readAsDataURL(file);
-          compressedImageRef.current = null;
-        }
-      } catch (err) {
-        console.error('Camera image processing error:', err);
-        const reader = new FileReader();
-        reader.onloadend = () => setImagePreview(reader.result);
-        reader.readAsDataURL(file);
-        compressedImageRef.current = null;
-      }
+      const formData = new FormData();
+      formData.append('image', file);
+      await updateVariantMutation.mutateAsync({ id: variant._id, data: formData });
+      toast({ title: 'Image uploaded', status: 'success' });
+    } catch (error) {
+      toast({ title: 'Error', description: error?.message || 'Failed to upload image', status: 'error' });
     }
   };
 
@@ -331,20 +292,10 @@ const Edibles = () => {
         toast({ title: 'Select an edible type', status: 'warning' });
         return;
       }
-      const formData = new FormData();
-      formData.append('price', data.price);
-      formData.append('edibleType', data.edibleType);
-      const compressedFile = compressedImageRef.current;
-      const cameraFile = cameraInputRef.current?.files?.[0];
-      const galleryFile = fileInputRef.current?.files?.[0];
-      if (compressedFile) {
-        formData.append('image', compressedFile);
-      } else if (cameraFile) {
-        formData.append('image', cameraFile);
-      } else if (galleryFile) {
-        formData.append('image', galleryFile);
-      }
-      updateMutation.mutate({ id: editingProduct._id, data: formData });
+      updateMutation.mutate({
+        id: editingProduct._id,
+        data: { price: data.price, edibleType: data.edibleType },
+      });
       return;
     }
 
@@ -367,25 +318,14 @@ const Edibles = () => {
       return;
     }
 
-    const formData = new FormData();
+    const payload = {};
     Object.keys(data).forEach((key) => {
       if (data[key] !== undefined && data[key] !== '') {
-        formData.append(key, data[key]);
+        payload[key] = data[key];
       }
     });
-    formData.append('variants', JSON.stringify(trimmedVariants));
-
-    const compressedFile = compressedImageRef.current;
-    const cameraFile = cameraInputRef.current?.files?.[0];
-    const galleryFile = fileInputRef.current?.files?.[0];
-    if (compressedFile) {
-      formData.append('image', compressedFile);
-    } else if (cameraFile) {
-      formData.append('image', cameraFile);
-    } else if (galleryFile) {
-      formData.append('image', galleryFile);
-    }
-    createMutation.mutate(formData);
+    payload.variants = trimmedVariants;
+    createMutation.mutate(payload);
   };
 
   if (isLoading) {
@@ -403,7 +343,7 @@ const Edibles = () => {
           <Text fontSize="2xl" fontWeight="bold">
             Edible
           </Text>
-          <Button leftIcon={<FiPlus />} colorScheme="purple" onClick={() => { onOpen(); registerOverlay?.(handleClose); }}>
+          <Button leftIcon={<FiPlus />} colorScheme="purple" onClick={() => { onOpen(); }}>
             Add
           </Button>
         </HStack>
@@ -443,13 +383,6 @@ const Edibles = () => {
                 </AccordionButton>
                 <AccordionPanel pb={4}>
                   <HStack justify="space-between" align="start">
-                    <HStack spacing={4} align="start">
-                      <Image
-                        src={resolveMediaUrl(product.imageUrl, product.image)}
-                        boxSize="80px"
-                        objectFit="cover"
-                        borderRadius="md"
-                      />
                       <VStack align="start" spacing={1}>
                         <Text fontSize="sm" color="gray.500">
                           Brand: {product.brand || '—'}
@@ -461,14 +394,12 @@ const Edibles = () => {
                           {product.price ? `$${product.price}` : 'No price'}
                         </Text>
                       </VStack>
-                    </HStack>
                     <HStack>
                       <IconButton
                         icon={<FiEdit2 />}
                         variant="ghost"
                         onClick={() => {
                           handleEdit(product);
-                          registerOverlay?.(handleClose);
                         }}
                         aria-label="Edit"
                       />
@@ -495,6 +426,7 @@ const Edibles = () => {
                               <Badge colorScheme={variant.isActive !== false ? 'green' : 'red'}>
                                 {variant.isActive !== false ? 'Active' : 'Inactive'}
                               </Badge>
+                              {variant.image ? <FiCheck color="green" /> : null}
                               <Text>{variant.name}</Text>
                             </HStack>
                             <Switch
@@ -526,63 +458,6 @@ const Edibles = () => {
               <form onSubmit={handleSubmit(onSubmit)}>
                 <ModalBody>
                   <VStack spacing={4}>
-                    <Box w="100%" textAlign="center">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        ref={fileInputRef}
-                        onChange={handleImageChange}
-                        display="none"
-                      />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        ref={cameraInputRef}
-                        onChange={handleCameraChange}
-                        style={{ display: 'none' }}
-                      />
-                      {imagePreview ? (
-                        <Box position="relative" display="inline-block">
-                          <Image src={imagePreview} maxH="200px" borderRadius="lg" />
-                          <HStack position="absolute" bottom={2} right={2} spacing={2}>
-                            <IconButton
-                              icon={<FiCamera />}
-                              onClick={() => {
-                                markCameraOpen();
-                                cameraInputRef.current.click();
-                              }}
-                              aria-label="Take photo"
-                              size="sm"
-                            />
-                            <IconButton
-                              icon={<FiUpload />}
-                              onClick={() => fileInputRef.current.click()}
-                              aria-label="Change image"
-                              size="sm"
-                            />
-                          </HStack>
-                        </Box>
-                      ) : (
-                        <HStack spacing={4} justify="center">
-                          <Button
-                            leftIcon={<FiUpload />}
-                            onClick={() => fileInputRef.current.click()}
-                          >
-                            Upload Image
-                          </Button>
-                          <Button
-                            leftIcon={<FiCamera />}
-                            onClick={() => {
-                              markCameraOpen();
-                              cameraInputRef.current.click();
-                            }}
-                          >
-                            Take Photo
-                          </Button>
-                        </HStack>
-                      )}
-                    </Box>
 
                       {editingProduct ? (
                         <VStack spacing={4} align="stretch">
@@ -598,7 +473,24 @@ const Edibles = () => {
                               <VStack spacing={3} align="stretch">
                                 {editVariants.map((variant) => (
                                   <HStack key={variant._id || variant.name} justify="space-between">
-                                    <Text>{variant.name}</Text>
+                                    <HStack>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        style={{ display: 'none' }}
+                                        ref={(el) => { if (variant._id) variantFileRefs.current[variant._id] = el; }}
+                                        onChange={() => handleVariantImageUpload(variant)}
+                                      />
+                                      <IconButton
+                                        icon={variant.image ? <FiCheck /> : <FiImage />}
+                                        size="sm"
+                                        variant="ghost"
+                                        colorScheme={variant.image ? 'green' : 'gray'}
+                                        aria-label="Upload variant image"
+                                        onClick={() => variantFileRefs.current[variant._id]?.click()}
+                                      />
+                                      <Text>{variant.name}</Text>
+                                    </HStack>
                                     <Switch
                                       isChecked={variant.isActive !== false}
                                       onChange={(e) => {
@@ -813,7 +705,7 @@ const Edibles = () => {
                     colorScheme="purple"
                     isLoading={createMutation.isPending || updateMutation.isPending}
                   >
-                    {editingProduct ? 'Update' : 'Create'}
+                    {editingProduct ? 'Save' : 'Create'}
                   </Button>
                 </ModalFooter>
               </form>

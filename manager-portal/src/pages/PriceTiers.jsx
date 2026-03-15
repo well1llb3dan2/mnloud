@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -33,6 +33,7 @@ import {
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { priceTierService } from '../services';
+import { useOverlayStack } from '../context';
 
 const PriceTiers = () => {
   const { colorMode } = useColorMode();
@@ -40,6 +41,8 @@ const PriceTiers = () => {
   const queryClient = useQueryClient();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [editingTier, setEditingTier] = useState(null);
+  const { register: registerOverlay, unregister: unregisterOverlay } = useOverlayStack();
+  const handleCloseRef = useRef(null);
 
   const { register, handleSubmit, reset, control, setValue } = useForm({
     defaultValues: {
@@ -94,6 +97,24 @@ const PriceTiers = () => {
     reset({ name: '', prices: [{ quantity: '', price: '' }] });
     onClose();
   };
+
+  handleCloseRef.current = handleClose;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const isEditing = !!editingTier;
+    const closeFn = isEditing
+      ? () => {
+          if (window.confirm('Discard unsaved changes?')) {
+            handleCloseRef.current();
+            return undefined;
+          }
+          return false;
+        }
+      : () => handleCloseRef.current();
+    registerOverlay(closeFn);
+    return () => unregisterOverlay(closeFn);
+  }, [isOpen, !!editingTier, registerOverlay, unregisterOverlay]);
 
   const handleEdit = (tier) => {
     setEditingTier(tier);

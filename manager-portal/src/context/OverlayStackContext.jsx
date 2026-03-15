@@ -24,7 +24,10 @@ export const OverlayStackProvider = ({ children }) => {
   // Close the top-most overlay (used by back button handler)
   const closeTop = () => {
     const closeFn = stackRef.current.pop();
-    if (closeFn) closeFn();
+    if (closeFn) {
+      const result = closeFn();
+      if (result === false) stackRef.current.push(closeFn);
+    }
   };
 
   const hasOverlay = () => stackRef.current.length > 0;

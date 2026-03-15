@@ -136,17 +136,10 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('system:version', ({ version }) => {
       if (!version) return;
       const previous = localStorage.getItem(serverVersionKey);
-      if (previous && previous !== version) {
-        toast({
-          title: 'Update available',
-          description: 'Server updated. Refresh the page to continue.',
-          status: 'info',
-          duration: null,
-          isClosable: true,
-          position: 'top-right',
-        });
-      }
       localStorage.setItem(serverVersionKey, version);
+      if (previous && previous !== version) {
+        window.location.reload();
+      }
     });
 
     // Message handlers

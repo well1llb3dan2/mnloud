@@ -1,0 +1,195 @@
+CUSTOMER PORTAL — PAGE / MODAL / POPUP FLOW
+=============================================
+
+GLOBAL INFRASTRUCTURE
+─────────────────────
+  OverlayStackProvider (wraps entire app)
+  └── useBackButton hook (in Layout)
+      ├── If overlay open → close top overlay
+      ├── "/" (home) → double-tap to exit (toast: "Press back again")
+      ├── /products, /cart, /orders, /profile, /chat → navigate to "/"
+      ├── /products/:category → navigate to /products
+      └── Deeper routes → normal history back
+
+  ToastProvider (global, non-blocking notifications)
+
+
+LAYOUT (wraps all protected routes)
+────────────────────────────────────
+  ┌─ header: Top Bar (fixed, 52px)
+  │   ├── Back button (Safari only, non-main-tab pages)
+  │   ├── Page title
+  │   └── Install button (if not standalone + authenticated)
+  │
+  ├─ main: <Outlet /> (scrollable content area)
+  │
+  └─ nav: Bottom Nav (fixed, 80px)
+      ├── Shop   → /
+      ├── Cart   → /cart     [badge: cart count]
+      ├── Chat   → /chat     [badge: unread count]
+      ├── Orders → /orders
+      └── Profile → /profile
+
+  OVERLAY: Install Guide
+  ├── Trigger: "Install" button in top bar
+  ├── iOS path: Share → Add to Home Screen instructions
+  ├── Android path: Install Now button (uses beforeinstallprompt)
+  └── Dismiss: × close button
+
+
+PUBLIC ROUTES (no Layout wrapper)
+─────────────────────────────────
+  /login             → Login page (no modals, toast on error)
+  /register/:code    → Register page (no modals, toast on error)
+  /forgot-password   → ForgotPassword (no modals, toast on success/error)
+  /reset-password/:t → ResetPassword (no modals, toast on success/error)
+
+
+PROTECTED ROUTES
+────────────────
+
+/ and /products — Shop (category landing)
+├── No modals
+└── Category cards navigate to /products/:category
+
+/products/:category — Product List (ProductCategory)
+├── No page-level modals
+└── Each product renders a ProductCardUI component (see below)
+
+  ProductCardUI — FLOWER TYPE
+  ├── MODAL 1: Details
+  │   ├── Trigger: "Details" button
+  │   ├── Content: strain type, THC%, effects, flavors,
+  │   │           terpenes, may relieve, lineage, description
+  │   └── Dismiss: Close button
+  │
+  ├── CONFIRM DIALOG: Add to Cart
+  │   ├── Trigger: "Add to Cart" button
+  │   ├── Message: strain name (type) — weight, price
+  │   ├── Actions: Cancel / Add
+  │   └── On confirm: addItem → success toast or error toast
+  │
+  └── Selectors (inline, not overlays):
+      └── Weight/price tier dropdown
+
+  ProductCardUI — CONCENTRATE TYPE
+  ├── IMAGE CAROUSEL (if has variants with images)
+  │   ├── Swipe to browse strains
+  │   ├── Snap to nearest, updates selected strain
+  │   └── Dot indicators (clickable)
+  │
+  ├── MODAL 1: Details
+  │   ├── Trigger: image click (non-carousel only)
+  │   ├── Content: description, flavor list
+  │   └── Dismiss: Close button
+  │
+  ├── MODAL 2: Fullscreen Image
+  │   ├── Trigger: image click inside Details modal (non-carousel only)
+  │   ├── Content: full-size image or video with controls
+  │   └── Dismiss: Close button
+  │
+  ├── CONFIRM DIALOG: Add to Cart
+  │   ├── Trigger: "Add to Cart" button
+  │   ├── Message: brand | name — strain (type), qty, price
+  │   └── Actions: Cancel / Add
+  │
+  └── Selectors (inline):
+      └── Quantity dropdown
+
+  ProductCardUI — DISPOSABLE TYPE
+  ├── VIDEO PLAYER (inline, not modal)
+  │   ├── Trigger: "Tap to play" overlay
+  │   ├── Loops 5× max, stops on scroll/touch
+  │   └── Tap video to stop
+  │
+  ├── MODAL 1: Details
+  │   ├── Trigger: image/video area click
+  │   ├── Content: description, flavor list
+  │   └── Dismiss: Close button
+  │
+  ├── MODAL 2: Fullscreen Image/Video
+  │   ├── Trigger: image click inside Details modal
+  │   └── Dismiss: Close button
+  │
+  ├── CONFIRM DIALOG: Add to Cart
+  │   └── Same pattern as concentrate
+  │
+  └── Selectors (inline):
+      ├── Flavor/strain dropdown
+      └── Quantity dropdown
+
+  ProductCardUI — EDIBLE TYPE
+  ├── IMAGE CAROUSEL (if has variants with images)
+  │   ├── Swipe to browse variants
+  │   ├── Snap to nearest, updates selected variant
+  │   └── Dot indicators (clickable)
+  │
+  ├── MODAL 1: Details
+  │   ├── Trigger: image click (non-carousel only)
+  │   ├── Content: description, variant list
+  │   └── Dismiss: Close button
+  │
+  ├── MODAL 2: Fullscreen Image
+  │   ├── Trigger: image click inside Details modal (non-carousel only)
+  │   └── Dismiss: Close button
+  │
+  ├── CONFIRM DIALOG: Add to Cart
+  │   ├── Message: brand | name — variant, weight, qty, price
+  │   └── Actions: Cancel / Add
+  │
+  └── Selectors (inline):
+      └── Quantity dropdown
+
+
+/cart — Shopping Cart
+├── INLINE ALERT: "Some items unavailable" banner
+│   └── "Remove all" button (removes unavailable items)
+│
+├── MODAL 1: Unavailable Items
+│   ├── Trigger: automatic when validateCart() finds issues
+│   ├── Content: list of unavailable item names
+│   ├── Actions: Back to Cart / Remove Unavailable / Browse Shop
+│   └── Dismiss: Back to Cart
+│
+├── MODAL 2: Confirm Order
+│   ├── Trigger: "Checkout" button (after validation passes)
+│   ├── Content: total amount, confirmation message,
+│   │           unavailable item warnings if any
+│   ├── Actions: Cancel / Send Order
+│   └── On confirm: validate → get/create conversation →
+│                   send order via socket → clear cart → navigate /chat
+│
+└── Toasts: error/success on checkout
+
+
+/chat — Chat
+├── No modals
+├── Inline features:
+│   ├── Auto-scroll to latest message
+│   ├── Typing indicator
+│   ├── Load more messages on scroll up
+│   └── Text input with send button
+└── Message types: text, image, order card
+
+
+/orders — Orders
+├── No modals
+├── Expandable <details> elements per order
+│   ├── Summary: status, date, total
+│   └── Expanded: items grouped by category
+└── Status badges: pending / completed / cancelled
+
+
+/profile — Profile
+├── MODAL: Change Password
+│   ├── Trigger: "Change Password" button
+│   ├── Fields: Current Password, New Password
+│   ├── Actions: Cancel / Change Password
+│   └── On submit: update password → success toast → close
+│
+├── Buttons (inline):
+│   ├── Update Profile (name edit + save)
+│   ├── Mute/Unmute Notifications
+│   └── Sign Out
+│
+└── Toasts: success/error for profile update, password change
